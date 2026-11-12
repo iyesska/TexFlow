@@ -1,3 +1,4 @@
+import { MarkdownPane } from "@/features/editor/components/markdown-pane";
 import { PaperSheet } from "@/features/preview/components/paper-sheet";
 import { ShortcutKeys } from "@/components/shortcut-keys";
 import { SHORTCUTS } from "@/config/shortcuts";
@@ -13,18 +14,6 @@ function ToggleHint({ pane }: { pane: PaneId }) {
       <ShortcutKeys combo={SHORTCUTS.togglePane[pane]} />
       muestra u oculta este panel
     </p>
-  );
-}
-
-function MarkdownPlaceholder() {
-  return (
-    <PaneEmptyState
-      icon={PANE_META.markdown.icon}
-      title="El editor todavía no está conectado"
-      description="Aquí escribirás el documento en Markdown, con resaltado, atajos y guardado automático. Llega en la fase 2."
-    >
-      <ToggleHint pane="markdown" />
-    </PaneEmptyState>
   );
 }
 
@@ -59,8 +48,8 @@ function PreviewPlaceholder() {
   );
 }
 
-const PLACEHOLDERS: Readonly<Record<PaneId, () => React.JSX.Element>> = {
-  markdown: MarkdownPlaceholder,
+const CONTENTS: Readonly<Record<PaneId, () => React.JSX.Element>> = {
+  markdown: MarkdownPane,
   latex: LatexPlaceholder,
   preview: PreviewPlaceholder,
 };
@@ -70,6 +59,6 @@ const PLACEHOLDERS: Readonly<Record<PaneId, () => React.JSX.Element>> = {
  * phase replaces one entry here with the real thing.
  */
 export function PaneContent({ pane }: { pane: PaneId }) {
-  const Content = PLACEHOLDERS[pane];
+  const Content = CONTENTS[pane];
   return <Content />;
 }

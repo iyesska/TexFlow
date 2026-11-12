@@ -38,6 +38,33 @@ defecto ante cualquier valor inválido.
 Los atajos se declaran en `src/config/shortcuts.ts` y se describen por tecla física, de
 modo que funcionan igual en cualquier distribución de teclado.
 
+## El documento y el editor (fase 2)
+
+El documento abierto vive en una `DocumentSession`
+(`src/features/document/model/document-session.ts`), un objeto sin React que guarda el
+Markdown, programa el guardado automático tras una pausa al escribir y expone su estado
+(`loading`, `saved`, `unsaved`, `saving`, `error`). React lo lee con
+`useSyncExternalStore`, de modo que cada componente se suscribe solo a lo que muestra.
+
+La sesión guarda a través de la interfaz `DocumentStore`. Hoy la implementa el
+almacenamiento del navegador, validado con Zod al leer; en la fase 7 la implementará la
+API sin cambios en el editor. Los paneles LaTeX y Vista previa leerán el Markdown de la
+misma sesión.
+
+El editor separa CodeMirror de React:
+
+- `src/features/editor/codemirror` no importa React. Contiene la sintaxis de Pandoc
+  (fórmulas y notas al pie sobre el analizador de Markdown), los comandos de formato, las
+  sugerencias, los atajos y el tema. Los comandos son funciones puras sobre el estado del
+  editor, así que se prueban sin navegador.
+- `src/features/editor/components` monta la vista y dibuja la barra de herramientas y la
+  de estado.
+- Una caché de sesión conserva el estado del editor (texto, cursor, historial) mientras
+  el panel está oculto y reenvía los eventos al componente que lo muestre en ese momento.
+
+CodeMirror se carga con `next/dynamic` sin SSR: es la parte más pesada de la página y
+solo funciona en el navegador.
+
 ## Flujo de conversión (fases 3 a 5)
 
 ```

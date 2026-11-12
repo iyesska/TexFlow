@@ -1,0 +1,90 @@
+/*
+ * Syntax highlighting for source panes. CodeMirror tags tokens with `tok-*` classes;
+ * the colours come from the --syntax-* tokens so both themes share one stylesheet.
+ */
+
+.tok-heading {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.tok-strong {
+  font-weight: 700;
+}
+
+.tok-emphasis {
+  font-style: italic;
+}
+
+.tok-strike {
+  text-decoration: line-through;
+}
+
+.tok-markup,
+.tok-meta,
+.tok-punctuation {
+  color: var(--syntax-markup);
+}
+
+.tok-quote {
+  color: var(--muted-foreground);
+}
+
+.tok-math,
+.tok-math .tok-markup {
+  color: var(--syntax-math);
+}
+
+.tok-link,
+.tok-url {
+  color: var(--syntax-link);
+}
+
+.tok-url {
+  text-decoration: underline;
+  text-decoration-color: oklch(from var(--syntax-link) l c h / 0.4);
+  text-underline-offset: 3px;
+}
+
+.tok-code,
+.tok-labelName {
+  color: var(--syntax-code);
+}
+
+.tok-keyword,
+.tok-operatorKeyword,
+.tok-atom,
+.tok-bool {
+  color: var(--syntax-keyword);
+}
+
+.tok-string,
+.tok-string2,
+.tok-inserted {
+  color: var(--syntax-string);
+}
+
+.tok-number,
+.tok-literal {
+  color: var(--syntax-number);
+}
+
+.tok-typeName,
+.tok-className,
+.tok-namespace,
+.tok-macroName,
+.tok-propertyName,
+.tok-variableName.tok-definition,
+.tok-variableName2 {
+  color: var(--syntax-name);
+}
+
+.tok-comment {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+.tok-deleted,
+.tok-invalid {
+  color: var(--destructive);
+}

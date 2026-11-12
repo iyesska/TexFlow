@@ -22,12 +22,24 @@ export function matchesCombo(event: ComboEvent, combo: KeyCombo): boolean {
   );
 }
 
+const baseKey = (combo: KeyCombo) => combo.code.replace(/^(Digit|Key)/, "");
+
 /** Key caps to display for a combo, in the order they are pressed. */
-export function comboKeys(combo: KeyCombo): string[] {
+export function comboKeys(combo: KeyCombo, isMac = false): string[] {
   const keys: string[] = [];
-  if (combo.mod) keys.push("Ctrl");
-  if (combo.alt) keys.push("Alt");
-  if (combo.shift) keys.push("Shift");
-  keys.push(combo.code.replace(/^(Digit|Key)/, ""));
+  if (combo.mod) keys.push(isMac ? "⌘" : "Ctrl");
+  if (combo.alt) keys.push(isMac ? "⌥" : "Alt");
+  if (combo.shift) keys.push(isMac ? "⇧" : "Shift");
+  keys.push(baseKey(combo));
   return keys;
+}
+
+/** The combo in CodeMirror's key notation, e.g. "Mod-Shift-8". */
+export function codeMirrorKey(combo: KeyCombo): string {
+  const parts: string[] = [];
+  if (combo.mod) parts.push("Mod");
+  if (combo.alt) parts.push("Alt");
+  if (combo.shift) parts.push("Shift");
+  parts.push(baseKey(combo).toLowerCase());
+  return parts.join("-");
 }

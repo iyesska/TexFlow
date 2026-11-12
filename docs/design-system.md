@@ -45,6 +45,13 @@ archivo.
 
 El tema oscuro es el predeterminado; `.light` redefine los mismos tokens.
 
+### Sintaxis
+
+Los paneles de código usan los tokens `syntax-*` a través de las clases `tok-*` de
+`src/styles/syntax.css`. Las fórmulas llevan el color del acento: son lo que distingue a
+un documento LaTeX. Las marcas de Markdown (`#`, `**`, `>`) se atenúan para que el texto
+destaque sobre la notación.
+
 ### Tipografía
 
 | Rol       | Fuente           | Utilidad     |

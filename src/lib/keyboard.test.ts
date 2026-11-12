@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { comboKeys, matchesCombo } from "./keyboard";
+import { codeMirrorKey, comboKeys, matchesCombo } from "./keyboard";
 
 const event = (overrides: Partial<Parameters<typeof matchesCombo>[0]>) => ({
   code: "Digit1",
@@ -40,5 +40,17 @@ describe("comboKeys", () => {
       "Shift",
       "S",
     ]);
+  });
+
+  it("uses the platform's symbols on macOS", () => {
+    expect(comboKeys({ code: "KeyB", mod: true }, true)).toEqual(["⌘", "B"]);
+    expect(comboKeys({ code: "Digit1", alt: true }, true)).toEqual(["⌥", "1"]);
+  });
+});
+
+describe("codeMirrorKey", () => {
+  it("writes combos in CodeMirror notation", () => {
+    expect(codeMirrorKey({ code: "KeyB", mod: true })).toBe("Mod-b");
+    expect(codeMirrorKey({ code: "Digit8", mod: true, shift: true })).toBe("Mod-Shift-8");
   });
 });

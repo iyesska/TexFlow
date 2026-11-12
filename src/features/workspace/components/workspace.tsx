@@ -1,5 +1,9 @@
 "use client";
 
+import { DocumentShortcuts } from "@/features/document/components/document-shortcuts";
+import { DocumentProvider } from "@/features/document/hooks/use-document";
+import { EditorSessionCacheProvider } from "@/features/editor/hooks/use-editor-session-cache";
+
 import { useSplitView } from "../hooks/use-split-view";
 import {
   WorkspaceLayoutProvider,
@@ -18,6 +22,7 @@ function WorkspaceShell() {
   return (
     <div className="flex h-dvh flex-col">
       <WorkspaceShortcuts splitView={splitView} />
+      <DocumentShortcuts />
       <TopBar splitView={splitView} />
       <main className="min-h-0 flex-1 px-1.5 pb-1.5">
         {splitView ? <SplitView /> : <Pane pane={layout.active} withMenu={false} />}
@@ -30,7 +35,11 @@ function WorkspaceShell() {
 export function Workspace({ initialLayout }: { initialLayout: WorkspaceLayout }) {
   return (
     <WorkspaceLayoutProvider initialLayout={initialLayout}>
-      <WorkspaceShell />
+      <DocumentProvider>
+        <EditorSessionCacheProvider>
+          <WorkspaceShell />
+        </EditorSessionCacheProvider>
+      </DocumentProvider>
     </WorkspaceLayoutProvider>
   );
 }
