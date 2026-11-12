@@ -1,0 +1,163 @@
+/*
+ * TexFlow design tokens.
+ *
+ * Every colour, font, radius, shadow and easing in the product is declared here and
+ * consumed through Tailwind utilities. Components never hard-code a literal value.
+ *
+ * The world: a writing desk at night. Graphite surfaces, a white sheet of paper for the
+ * typeset document, and one highlighter-yellow accent for what the writer has marked:
+ * selection, focus and the primary action.
+ */
+
+:root,
+.dark {
+  /* Surfaces */
+  --background: oklch(0.155 0.006 255);
+  --surface: oklch(0.192 0.006 255);
+  --surface-raised: oklch(0.228 0.007 255);
+  --muted: oklch(0.25 0.007 255);
+
+  /* Text */
+  --foreground: oklch(0.94 0.004 255);
+  --muted-foreground: oklch(0.73 0.012 255);
+  --faint-foreground: oklch(0.6 0.012 255);
+
+  /* Lines */
+  --border: oklch(1 0 0 / 0.08);
+  --border-strong: oklch(1 0 0 / 0.16);
+  --input: oklch(1 0 0 / 0.12);
+
+  /* Accent: highlighter */
+  --highlight: oklch(0.85 0.135 88);
+  --highlight-foreground: oklch(0.21 0.03 88);
+  --ring: oklch(0.85 0.135 88);
+
+  /* States */
+  --destructive: oklch(0.71 0.17 25);
+  --success: oklch(0.77 0.14 155);
+  --warning: oklch(0.78 0.14 58);
+  --info: oklch(0.76 0.1 235);
+
+  /* Depth */
+  --elevation-pane:
+    0 1px 0 oklch(1 0 0 / 0.03) inset, 0 10px 28px -16px oklch(0 0 0 / 0.6);
+  --elevation-overlay:
+    0 1px 2px oklch(0 0 0 / 0.35), 0 14px 36px -10px oklch(0 0 0 / 0.6);
+  --elevation-paper: 0 1px 2px oklch(0 0 0 / 0.4), 0 18px 40px -14px oklch(0 0 0 / 0.65);
+}
+
+.light {
+  --background: oklch(0.953 0.004 95);
+  --surface: oklch(0.992 0.002 95);
+  --surface-raised: oklch(1 0 0);
+  --muted: oklch(0.928 0.005 95);
+
+  --foreground: oklch(0.22 0.01 260);
+  --muted-foreground: oklch(0.45 0.012 260);
+  --faint-foreground: oklch(0.57 0.01 260);
+
+  --border: oklch(0.22 0.01 260 / 0.1);
+  --border-strong: oklch(0.22 0.01 260 / 0.2);
+  --input: oklch(0.22 0.01 260 / 0.16);
+
+  --highlight: oklch(0.84 0.15 88);
+  --highlight-foreground: oklch(0.24 0.04 88);
+  --ring: oklch(0.6 0.13 80);
+
+  --destructive: oklch(0.55 0.2 27);
+  --success: oklch(0.52 0.14 155);
+  --warning: oklch(0.58 0.14 58);
+  --info: oklch(0.52 0.12 240);
+
+  --elevation-pane: 0 1px 2px oklch(0.22 0.01 260 / 0.05);
+  --elevation-overlay:
+    0 1px 2px oklch(0.22 0.01 260 / 0.08), 0 14px 36px -12px oklch(0.22 0.01 260 / 0.22);
+  --elevation-paper:
+    0 1px 2px oklch(0.22 0.01 260 / 0.1), 0 16px 36px -16px oklch(0.22 0.01 260 / 0.28);
+}
+
+:root {
+  /* The typeset page keeps its own palette in both themes: paper is paper. */
+  --paper: oklch(0.987 0.003 95);
+  --ink: oklch(0.2 0.01 260);
+  --ink-muted: oklch(0.48 0.01 260);
+
+  --radius: 0.5rem;
+
+  --easing-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+
+  /* shadcn/ui contract, mapped onto the tokens above. */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--foreground);
+  --primary: var(--highlight);
+  --primary-foreground: var(--highlight-foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+}
+
+@theme inline {
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-serif:
+    var(--font-libertinus-serif), "Iowan Old Style", "Palatino Linotype", serif;
+  --font-heading: var(--font-sans);
+
+  /* Product type scale: fixed rem steps at a tight ratio. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: 1.25rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.375);
+
+  --shadow-pane: var(--elevation-pane);
+  --shadow-overlay: var(--elevation-overlay);
+  --shadow-paper: var(--elevation-paper);
+
+  --ease-out: var(--easing-out);
+}
