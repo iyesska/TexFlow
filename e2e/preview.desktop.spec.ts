@@ -65,6 +65,8 @@ test("never runs or links to script from the document", async ({ page }) => {
 
 test("zooms in and out and fits the pane again", async ({ page }) => {
   const zoom = page.getByLabel("Zoom");
+  await expect(preview(page)).toBeVisible();
+  await expect(zoom).toHaveText(/\d+ %/);
   const fitted = await zoom.innerText();
   const sheetWidth = async () => (await preview(page).boundingBox())!.width;
   const before = await sheetWidth();

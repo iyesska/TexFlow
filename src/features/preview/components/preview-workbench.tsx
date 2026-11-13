@@ -84,7 +84,7 @@ export function PreviewWorkbench() {
       <PreviewToolbar
         mode={mode}
         onModeChange={compilation.setMode}
-        scale={scale ?? 1}
+        scale={scale}
         isFitted={zoom === "fit"}
         onZoomChange={setZoom}
         {...(showsPages

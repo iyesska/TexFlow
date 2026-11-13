@@ -65,8 +65,8 @@ export interface PageNavigation {
 interface PreviewToolbarProps {
   readonly mode: PreviewMode;
   readonly onModeChange: (mode: PreviewMode) => void;
-  /** The scale currently applied, whether fitted or fixed. */
-  readonly scale: number;
+  /** The scale currently applied, fitted or fixed; null until the pane is measured. */
+  readonly scale: number | null;
   readonly isFitted: boolean;
   readonly onZoomChange: (zoom: ZoomSetting) => void;
   /** Present while a PDF with pages is on screen. */
@@ -82,8 +82,8 @@ export function PreviewToolbar({
   onZoomChange,
   pages,
 }: PreviewToolbarProps) {
-  const zoomIn = zoomInFrom(scale);
-  const zoomOut = zoomOutFrom(scale);
+  const zoomIn = scale === null ? undefined : zoomInFrom(scale);
+  const zoomOut = scale === null ? undefined : zoomOutFrom(scale);
 
   return (
     <div className="no-scrollbar flex h-9 shrink-0 items-center gap-2 overflow-x-auto border-b pr-1.5 pl-2">
@@ -135,7 +135,7 @@ export function PreviewToolbar({
           aria-label="Zoom"
           className="min-w-12 text-center text-xs text-muted-foreground tabular-nums"
         >
-          {zoomLabel(scale)}
+          {scale === null ? "" : zoomLabel(scale)}
         </output>
         <ToolbarButton
           label="Acercar"
