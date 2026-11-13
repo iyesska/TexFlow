@@ -15,8 +15,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Install Pandoc
-        run: sudo apt-get update && sudo apt-get install -y pandoc
+      - name: Install Pandoc and bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y pandoc bubblewrap
+      # Ubuntu runners forbid unprivileged user namespaces, which bubblewrap needs.
+      - name: Allow the sandbox to create namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install Tectonic and its LaTeX packages
+        run: sudo scripts/setup-tectonic.sh && sudo chmod -R a+rX /var/cache/texflow
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck

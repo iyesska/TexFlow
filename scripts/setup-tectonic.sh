@@ -29,6 +29,7 @@ cp "$ROOT/pandoc/warmup.png" "$work/"
 
 # The same conversion the application runs, so the same packages are requested.
 pandoc --sandbox --from=markdown+ascii_identifiers --to=latex --standalone --listings \
+  --variable=papersize:a4 \
   < "$ROOT/pandoc/warmup.md" > "$work/main.tex"
 
 # A bare article too: documents without metadata load the default fonts.

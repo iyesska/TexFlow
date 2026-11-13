@@ -53,6 +53,7 @@ export function PreviewWorkbench() {
   const { ref: widthRef, width } = useElementWidth<HTMLDivElement>();
   const [pageCount, setPageCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pdfPageWidth, setPdfPageWidth] = useState<number | undefined>(undefined);
   const pdfRef = useRef<PdfDocumentHandle>(null);
 
   const isLoading = useSaveStatus() === "loading";
@@ -72,7 +73,9 @@ export function PreviewWorkbench() {
   }, [mode, isLoading]);
 
   // Until the pane has been measured there is no sensible scale to draw at.
-  const scale = width === null ? null : effectiveScale(zoom, width);
+  // The PDF's pages have their own size; the quick preview's sheet is always A4.
+  const sheetWidth = mode === "pdf" ? pdfPageWidth : undefined;
+  const scale = width === null ? null : effectiveScale(zoom, width, sheetWidth);
   const showsPages =
     mode === "pdf" &&
     compilation.pdf !== null &&
@@ -119,6 +122,7 @@ export function PreviewWorkbench() {
             scrollContainer={desk}
             documentRef={pdfRef}
             onPageCount={setPageCount}
+            onPageWidth={setPdfPageWidth}
             onCurrentPage={setCurrentPage}
           />
         ) : (

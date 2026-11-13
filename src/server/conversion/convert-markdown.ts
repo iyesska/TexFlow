@@ -11,7 +11,10 @@ function latexOptions(standalone: boolean): string[] {
     "--to=latex",
     "--wrap=preserve",
     // A whole document can load the listings package; a fragment must stand alone.
-    ...(standalone ? ["--standalone", "--listings"] : ["--no-highlight"]),
+    // A4 until the document templates set the page: LaTeX would default to US letter.
+    ...(standalone
+      ? ["--standalone", "--listings", "--variable=papersize:a4"]
+      : ["--no-highlight"]),
   ];
 }
 

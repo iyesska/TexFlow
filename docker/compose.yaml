@@ -1,0 +1,19 @@
+# Runs TexFlow from the image built by docker/Dockerfile:
+#   docker compose -f docker/compose.yaml up --build
+services:
+  texflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+    # PDF compilation isolates LaTeX with bubblewrap, which needs user namespaces.
+    # Docker's default seccomp and AppArmor profiles forbid creating them inside a
+    # container. Without these two lines the application still works, and answers
+    # that PDF compilation is unavailable rather than compile without isolation.
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    restart: unless-stopped

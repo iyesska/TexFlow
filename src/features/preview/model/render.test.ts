@@ -184,6 +184,9 @@ describe("zoom", () => {
     expect(fitScale(437)).toBeCloseTo(0.5);
     expect(fitScale(10)).toBe(0.25);
     expect(fitScale(10_000)).toBe(2);
+    // A US-letter page (816 px) needs a smaller scale than A4 to fit the same pane.
+    expect(fitScale(856, 816)).toBe(1);
+    expect(fitScale(834, 816)).toBeLessThan(1);
   });
 
   it("steps from the current scale, fitted or fixed", () => {

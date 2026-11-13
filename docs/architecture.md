@@ -130,8 +130,38 @@ se identifica su tipo por los primeros bytes del archivo (no por la extensión n
 tipo declarado) y se le da un nombre seguro y único. Solo se admiten PNG y JPEG, los
 formatos que LaTeX puede incluir.
 
-La compilación (fase 5) seguirá el patrón de las conversiones: contrato, ruta delgada,
-servicio y `runProcess`.
+## Compilación a PDF (fase 5)
+
+```
+POST /api/compile (multipart: markdown + imágenes)
+   ──► readBodyBytes (corta al exceder el tamaño) ──► valida nombres y contenido
+   ──► compileDocument
+          ├─► convertMarkdownToLatex (Pandoc, el mismo LaTeX que ve el usuario)
+          └─► semáforo ──► runProcess, aislamiento obligatorio ──► tectonic
+                               entrada: main.tex + imágenes
+                               salida:  main.pdf + main.log
+   ◄── PDF, o { ok: false, error: { diagnostics } }
+```
+
+- **Servicio.** `src/server/compilation/compile-document.ts` escribe el LaTeX y las
+  imágenes en el directorio del trabajo, ejecuta Tectonic y recoge el PDF y el log.
+- **Diagnósticos.** `diagnostics.ts` convierte la salida de Tectonic en problemas que se
+  entienden sin saber LaTeX: una explicación, el mensaje original, la línea del LaTeX y
+  su texto. `locate-in-markdown.ts` busca la línea del Markdown que lo causó, por el
+  comando o el archivo implicado y por las palabras que comparte con la línea del LaTeX.
+  Si no hay una respuesta clara no da ninguna: una línea equivocada es peor que no tenerla.
+- **Paquetes sin red.** Tectonic descarga los paquetes LaTeX bajo demanda. Como los
+  documentos se compilan sin red, `scripts/setup-tectonic.sh` compila antes, con red, un
+  documento que usa todo lo que la conversión puede generar (`pandoc/warmup.md`), y así
+  llena la caché. En ejecución Tectonic va con `--only-cached`.
+- **Cliente.** `CompilationProvider` guarda el último PDF y sabe si sigue correspondiendo
+  al documento; lo comparten el visor y el menú de exportación, de modo que exportar un
+  PDF recién compilado no vuelve a compilar. La compilación es explícita (al abrir la
+  vista PDF, con el botón o con el atajo), no en cada pausa: es la operación más cara.
+- **Visor.** `PdfDocument` usa pdf.js y dibuja cada página cuando se acerca a la zona
+  visible, a la resolución de la pantalla.
+- **Exportación.** El ZIP del proyecto se arma en el navegador con las fuentes y las
+  imágenes en una sola carpeta, que es donde el LaTeX las busca.
 
 ## Modelo de seguridad
 
@@ -169,15 +199,31 @@ El LaTeX escrito a mano dentro del Markdown (por ejemplo `\input{...}`) se conse
 salida: es texto y convertirlo no ejecuta nada. Su riesgo aparece al compilar, y ahí se
 controla.
 
-Previsto para la fase 5:
+En vigor desde la fase 5:
 
-- Tectonic con `--untrusted` (sin `shell-escape`) y con su bundle en caché, sin red.
-- En producción, el runner dentro de un contenedor sin red y con sistema de archivos de
-  solo lectura salvo el directorio del trabajo.
-- Las imágenes remotas de un documento no se descargan; solo se usan archivos subidos.
+- **Aislamiento del sistema operativo** con bubblewrap (`src/server/sandbox/isolation.ts`).
+  Dentro, el proceso ve `/usr` en solo lectura, un `/tmp` vacío y su directorio de
+  trabajo; no existen `/etc`, `/home`, `/proc` ni los archivos de la aplicación, no ve
+  otros procesos y no tiene red.
+- **Obligatorio para LaTeX.** Sin ese aislamiento, un documento puede leer cualquier
+  archivo del servidor aunque Tectonic vaya con `--untrusted`: se comprobó que
+  `\input{/etc/passwd}` acababa en el PDF. Los límites de recursos y la ausencia de shell
+  no lo evitan. Por eso, si el host no puede aislar, la compilación responde que no está
+  disponible. Pandoc también se aísla cuando el host lo permite.
+- **Tectonic con `--untrusted` y `--only-cached`:** sin `shell-escape` y sin red propia.
+- **Imágenes validadas otra vez en el servidor:** el nombre debe ser uno de los que
+  genera la aplicación, porque se usa como nombre de archivo, y el contenido debe ser el
+  formato que el nombre indica.
+- **Salidas leídas sin seguir enlaces simbólicos.** El PDF se recoge fuera del sandbox;
+  un enlace dejado por el trabajo con ese nombre no se sigue.
+- **Compilaciones canceladas** si el cliente se va, y dos como máximo a la vez.
+
+`SANDBOX_ISOLATION=disabled` levanta la exigencia de aislamiento. Existe para usar la
+aplicación en la propia máquina, con documentos propios, donde bubblewrap no está
+disponible; nunca para un servidor que reciba documentos de otras personas.
 
 Limitación conocida: no hay límite de peticiones por usuario hasta que exista
-autenticación (fase 7). El semáforo protege al servidor, no reparte el turno.
+autenticación (fase 7). Los semáforos protegen al servidor, no reparten el turno.
 
 ## Persistencia (fase 7)
 
@@ -208,8 +254,20 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
 | Imágenes remotas no se muestran                          | El PDF se compila sin red; la vista previa no promete lo que no habrá.     |
 | Solo PNG y JPEG                                          | Son los formatos que el motor LaTeX puede incluir.                         |
 | Zoom con la propiedad CSS `zoom`                         | Escala también el diseño, así el desplazamiento sigue siendo correcto.     |
+| bubblewrap para aislar procesos                          | Aísla archivos, red y procesos sin privilegios de root.                    |
+| Sin aislamiento no se compila                            | Fallar cerrado: mejor no ofrecer el PDF que exponer el servidor.           |
+| PDF binario en la respuesta, avisos en cabecera          | Evita codificar el PDF en base64 dentro de un JSON.                        |
+| Compilar a petición, no en cada pausa                    | Es la operación más cara; la vista rápida ya da respuesta inmediata.       |
+| Paquetes LaTeX descargados de antemano                   | Permite compilar sin red.                                                  |
 
 ## Riesgos conocidos
 
-- Tectonic necesita descargar su bundle de paquetes una vez. La imagen de producción lo
-  incluirá ya en caché para compilar sin red.
+- **La imagen Docker no se ha construido ni ejecutado.** El entorno de desarrollo no
+  tenía demonio de Docker. Está comprobado el servidor autocontenido que ejecuta.
+- **bubblewrap dentro de Docker** necesita que el contenedor pueda crear espacios de
+  nombres de usuario, lo que exige relajar los perfiles seccomp y AppArmor por defecto.
+  Es un compromiso: se debilita el aislamiento del contenedor para tener el de cada
+  trabajo. La alternativa, para más adelante, es un servicio de compilación separado.
+- **Paquetes LaTeX fuera de la caché.** Un documento que cargue a mano un paquete no
+  descargado falla con un mensaje que lo dice. Las plantillas (fase 6) ampliarán el
+  documento de calentamiento con lo que necesiten.

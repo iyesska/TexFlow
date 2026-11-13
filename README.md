@@ -15,7 +15,7 @@ en verde y esta tabla actualizada.
 | 2    | Editor Markdown con CodeMirror 6 y guardado automático         | Completada |
 | 3    | Conversión Markdown a LaTeX con Pandoc en el backend           | Completada |
 | 4    | Vista previa con KaTeX, tablas, imágenes y zoom                | Completada |
-| 5    | Compilación PDF con Tectonic y exportaciones                   | Pendiente  |
+| 5    | Compilación PDF con Tectonic y exportaciones                   | Completada |
 | 6    | Plantillas documentales                                        | Pendiente  |
 | 7    | Usuarios (Auth.js) y documentos (PostgreSQL + Prisma)          | Pendiente  |
 | 8    | Bibliografía BibTeX, historial de versiones, onboarding        | Pendiente  |
@@ -78,15 +78,35 @@ Vista previa (fase 4):
 - El HTML se sanea antes de mostrarse: nada de lo escrito en el documento puede ejecutar
   código ni cargar recursos externos.
 
+PDF y exportaciones (fase 5):
+
+- Compilación a PDF en el servidor con Tectonic. El panel de vista previa tiene dos
+  modos: la vista rápida, que sigue lo que escribes, y el PDF, que es la composición
+  exacta.
+- Visor de PDF por páginas: navegación entre páginas, el mismo zoom que la vista rápida
+  y aviso cuando el PDF ya no corresponde al texto, con un botón para recompilar.
+- `Ctrl/Cmd+Intro` compila y abre el PDF.
+- Los errores de LaTeX se explican en lenguaje llano, con el mensaje original del motor,
+  la línea del LaTeX y, cuando se puede determinar, un botón que lleva a la línea del
+  Markdown.
+- Menú **Exportar**: PDF, LaTeX (`.tex`), Markdown (`.md`) y el proyecto completo en un
+  ZIP con las fuentes y las imágenes, listo para compilar.
+- LaTeX se ejecuta aislado del sistema: el proceso solo ve sus propios archivos, no
+  tiene red y no puede ejecutar comandos. Si el servidor no puede aislarlo, la
+  compilación se niega a ejecutarse en lugar de hacerlo sin protección.
+
 Límites actuales:
 
-- La vista previa es una aproximación rápida y continua, sin saltos de página. La
-  composición exacta será la del PDF (fase 5).
-- Las imágenes remotas no se muestran: el PDF se compilará sin red, así que hay que
+- La vista rápida es una aproximación continua, sin saltos de página. La composición
+  exacta es la del PDF.
+- En el visor de PDF no se puede seleccionar ni buscar texto.
+- Las imágenes remotas no se usan: los documentos se compilan sin red, así que hay que
   añadirlas al documento.
 - Las imágenes añadidas no se pueden listar ni borrar todavía.
-- El preámbulo del documento LaTeX completo es el genérico de Pandoc; las plantillas
-  propias llegan en la fase 6.
+- Los paquetes LaTeX disponibles son los que usa la conversión. Un `\usepackage` de
+  otro paquete, escrito a mano, da un error que lo indica.
+- El preámbulo del documento LaTeX es el genérico de Pandoc; las plantillas propias
+  llegan en la fase 6.
 
 ### Atajos de teclado
 
@@ -95,6 +115,7 @@ Límites actuales:
 | Mostrar u ocultar un panel      | `Alt+1`, `Alt+2`, `Alt+3` | `⌥1`, `⌥2`, `⌥3`    |
 | Mostrar los tres paneles        | `Alt+0`                   | `⌥0`                |
 | Guardar                         | `Ctrl+S`                  | `⌘S`                |
+| Compilar y ver el PDF           | `Ctrl+Intro`              | `⌘Intro`            |
 | Negrita, cursiva                | `Ctrl+B`, `Ctrl+I`        | `⌘B`, `⌘I`          |
 | Código en línea, enlace         | `Ctrl+E`, `Ctrl+K`        | `⌘E`, `⌘K`          |
 | Lista numerada, lista, cita     | `Ctrl+Shift+7`, `8`, `9`  | `⌘⇧7`, `8`, `9`     |
@@ -122,13 +143,20 @@ Límites actuales:
 
 - Node.js 22 o superior.
 - pnpm 10 (`corepack enable` lo instala).
-
 - Pandoc 3.1 o superior. En Debian y Ubuntu: `sudo apt-get install pandoc`. En macOS:
   `brew install pandoc`.
-- Linux para los límites de CPU y tamaño de archivo del sandbox (usan `prlimit`). En otros
-  sistemas la aplicación funciona, con los límites de tiempo, memoria y salida.
+- Para compilar a PDF, que solo funciona en Linux:
+  - bubblewrap, que aísla el proceso de LaTeX: `sudo apt-get install bubblewrap`.
+  - Tectonic y sus paquetes LaTeX. El script los instala y descarga, una sola vez:
 
-Las fases 5 y 7 añadirán Tectonic y PostgreSQL.
+    ```bash
+    sudo scripts/setup-tectonic.sh
+    ```
+
+Sin bubblewrap o sin Tectonic, todo lo demás funciona y la compilación a PDF responde
+que no está disponible. En macOS y Windows, usa la imagen Docker para tener el PDF.
+
+La fase 7 añadirá PostgreSQL.
 
 ## Instalación
 
@@ -148,10 +176,13 @@ La aplicación queda en <http://localhost:3000>.
 
 ### Variables de entorno
 
-| Variable              | Descripción                  | Valor por defecto       |
-| --------------------- | ---------------------------- | ----------------------- |
-| `NEXT_PUBLIC_APP_URL` | URL pública de la aplicación | `http://localhost:3000` |
-| `PANDOC_PATH`         | Ejecutable de Pandoc         | `pandoc`                |
+| Variable              | Descripción                                                     | Valor por defecto             |
+| --------------------- | --------------------------------------------------------------- | ----------------------------- |
+| `NEXT_PUBLIC_APP_URL` | URL pública de la aplicación                                    | `http://localhost:3000`       |
+| `PANDOC_PATH`         | Ejecutable de Pandoc                                            | `pandoc`                      |
+| `TECTONIC_PATH`       | Ejecutable de Tectonic                                          | `tectonic`                    |
+| `TECTONIC_CACHE_DIR`  | Caché de paquetes LaTeX                                         | `/var/cache/texflow/tectonic` |
+| `SANDBOX_ISOLATION`   | `required` exige aislar LaTeX; `disabled` lo permite sin aislar | `required`                    |
 
 Las variables se validan con Zod en `src/config/env.ts`; la aplicación no arranca con un
 valor inválido.
@@ -210,6 +241,11 @@ src/
 │  ├─ assets/           Imágenes del documento
 │  │  ├─ model/         Validación, nombres, almacén (IndexedDB) y biblioteca
 │  │  └─ hooks/         Enlace con React
+│  ├─ compilation/      Compilación a PDF
+│  │  ├─ model/         Petición de compilación e imágenes que usa el documento
+│  │  ├─ hooks/         PDF compartido por la vista previa y la exportación
+│  │  └─ components/    Lista de problemas y atajo de compilar
+│  ├─ export/           Menú Exportar y archivo ZIP del proyecto
 │  └─ preview/          Vista previa
 │     ├─ model/         Saneado del HTML, fórmulas, imágenes, parcheo del DOM y zoom
 │     ├─ hooks/         HTML de la vista previa
@@ -217,18 +253,21 @@ src/
 ├─ server/              Lógica de servidor, sin React
 │  ├─ sandbox/          Ejecución aislada de procesos y límite de concurrencia
 │  ├─ conversion/       Pandoc: ejecución común, LaTeX y HTML de la vista previa
+│  ├─ compilation/      Tectonic: compilación y explicación de sus errores
 │  └─ http/             Lectura segura de cuerpos de petición
 ├─ contracts/           Esquemas de la API compartidos por cliente y servidor
 ├─ hooks/               Hooks compartidos (atajos, media queries)
 ├─ config/              Entorno validado, atajos, datos del sitio
 ├─ lib/                 Utilidades puras y piezas de CodeMirror compartidas
 └─ styles/              Tokens de diseño y colores de sintaxis
-pandoc/                 Filtro y plantilla que el servidor pasa a Pandoc
+pandoc/                 Filtro, plantilla y documento de calentamiento para Pandoc
+scripts/                Instalación de Tectonic y descarga de sus paquetes
+docker/                 Imagen y compose de despliegue
 e2e/                    Tests Playwright
 docs/                   Arquitectura y sistema visual
 ```
 
-Las carpetas `prisma` y `docker` aparecerán con las fases que las llenan.
+La carpeta `prisma` aparecerá con la fase 7.
 
 ## API
 
@@ -284,6 +323,44 @@ Los errores tienen la misma forma y los mismos códigos que en `/api/convert`.
 El HTML refleja lo que escribió el autor (destinos de enlaces, atributos), así que **no
 es seguro insertarlo tal cual**: el cliente lo sanea antes de mostrarlo.
 
+### `POST /api/compile`
+
+Compila el documento a PDF. La petición es `multipart/form-data`:
+
+| Campo      | Contenido                                                           |
+| ---------- | ------------------------------------------------------------------- |
+| `markdown` | El documento                                                        |
+| `image`    | Un archivo por imagen, con el nombre que usa el Markdown. Repetible |
+
+Respuesta correcta (`200`): el PDF (`application/pdf`). Los avisos de LaTeX van en la
+cabecera `X-Texflow-Warnings`, como JSON codificado para URL.
+
+Si el documento no compila (`422`):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "compile-error",
+    "message": "El documento tiene un error que impide generar el PDF.",
+    "diagnostics": [
+      {
+        "severity": "error",
+        "message": "LaTeX no conoce el comando \\foo. Revisa cómo está escrito.",
+        "detail": "Undefined control sequence",
+        "latexLine": 78,
+        "markdownLine": 3,
+        "excerpt": "Texto con \\foo{x} raro."
+      }
+    ]
+  }
+}
+```
+
+Los demás códigos son los de `/api/convert`. La petición admite hasta 40 MB en total, y
+cada imagen debe ser un PNG o JPEG de hasta 5 MB con un nombre generado por la
+aplicación.
+
 ## Documentación
 
 - [Arquitectura](docs/architecture.md): capas, flujo de conversión, modelo de seguridad y
@@ -299,7 +376,31 @@ es seguro insertarlo tal cual**: el cliente lo sanea antes de mostrarlo.
 
 ## Despliegue
 
-Hoy la aplicación es un servidor Next.js estándar:
+El servidor ejecuta Pandoc y Tectonic como procesos, así que necesita un host que lo
+permita: un contenedor o una máquina, no una plataforma solo serverless.
+
+### Con Docker
+
+```bash
+docker compose -f docker/compose.yaml up --build
+```
+
+La imagen (`docker/Dockerfile`) incluye Node, Pandoc, bubblewrap, Tectonic y los
+paquetes LaTeX ya descargados; el servidor corre sin privilegios de root.
+
+Para compilar a PDF, bubblewrap necesita crear espacios de nombres de usuario dentro del
+contenedor, y los perfiles por defecto de Docker lo impiden. Por eso `compose.yaml`
+arranca el contenedor con `seccomp=unconfined` y `apparmor=unconfined`. Sin esas
+opciones la aplicación funciona igual, salvo que la compilación a PDF responde que no
+está disponible.
+
+La imagen no se ha podido construir en el entorno donde se desarrolló (no había
+demonio de Docker). Lo que sí está comprobado es el servidor autocontenido que la
+imagen ejecuta (`.next/standalone`), con las tres rutas de la API.
+
+### Sin Docker
+
+En una máquina Linux con los requisitos instalados:
 
 ```bash
 pnpm build
@@ -308,7 +409,3 @@ pnpm build
 ```bash
 pnpm start
 ```
-
-El backend ejecuta Pandoc, y desde la fase 5 ejecutará Tectonic, como procesos
-aislados. Eso exige un host que permita ejecutar binarios, así que el destino previsto es
-un contenedor (la imagen se añade en la fase 5), no una plataforma solo serverless.

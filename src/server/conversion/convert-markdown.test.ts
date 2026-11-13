@@ -93,6 +93,7 @@ describe("standalone documents", () => {
     const result = await convertMarkdownToLatex({ markdown, standalone: true }, "pandoc");
     if (!result.ok) throw new Error(result.error.message);
     expect(result.latex).toContain("\\documentclass");
+    expect(result.latex).toMatch(/\\documentclass\[\s*a4paper/);
     expect(result.latex).toContain("\\title{Mi tesis}");
     expect(result.latex).toContain("\\author{Ada}");
     expect(result.latex).toContain("\\begin{document}");

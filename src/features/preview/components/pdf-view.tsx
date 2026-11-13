@@ -46,12 +46,14 @@ export function PdfView({
   scrollContainer,
   documentRef,
   onPageCount,
+  onPageWidth,
   onCurrentPage,
 }: {
   scale: number;
   scrollContainer: HTMLElement | null;
   documentRef: Ref<PdfDocumentHandle>;
   onPageCount: (count: number) => void;
+  onPageWidth: (width: number) => void;
   onCurrentPage: (page: number) => void;
 }) {
   const { pdf, error, hasProblems, isCompiling, isStale, compile } = useCompilation();
@@ -74,6 +76,7 @@ export function PdfView({
             scale={scale}
             scrollContainer={scrollContainer}
             onPageCount={onPageCount}
+            onPageWidth={onPageWidth}
             onCurrentPage={onCurrentPage}
           />
         </div>

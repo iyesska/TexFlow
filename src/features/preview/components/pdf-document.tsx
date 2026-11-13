@@ -33,6 +33,8 @@ interface PdfDocumentProps {
   /** The scrolling element that contains the pages. */
   readonly scrollContainer: HTMLElement | null;
   readonly onPageCount: (count: number) => void;
+  /** Reports the width of the first page at 100 %, in CSS pixels. */
+  readonly onPageWidth: (width: number) => void;
   readonly onCurrentPage: (page: number) => void;
   readonly ref?: Ref<PdfDocumentHandle>;
 }
@@ -153,6 +155,7 @@ export function PdfDocument({
   scale,
   scrollContainer,
   onPageCount,
+  onPageWidth,
   onCurrentPage,
   ref,
   className,
@@ -175,6 +178,17 @@ export function PdfDocument({
   useEffect(() => {
     onPageCount(pageCount);
   }, [onPageCount, pageCount]);
+
+  useEffect(() => {
+    if (!pdf) return;
+    let cancelled = false;
+    void pdf.getPage(1).then((page) => {
+      if (!cancelled) onPageWidth(page.getViewport({ scale: 1 }).width * PX_PER_PT);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [onPageWidth, pdf]);
 
   useEffect(() => {
     if (!scrollContainer || pageCount === 0) return;

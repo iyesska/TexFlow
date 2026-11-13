@@ -15,7 +15,8 @@ densidad, consistencia y estados claros antes que expresión.
    serif para la página. Cada panel habla con la suya.
 2. **El papel es papel.** La vista previa siempre es una hoja clara, en ambos temas.
 3. **El acento se gasta poco.** Selección, foco, tirador activo y botón principal. Nunca
-   como decoración.
+   como decoración. El botón Exportar es el único relleno con el acento en la pantalla:
+   es a lo que lleva todo lo demás.
 4. **El movimiento informa.** Transiciones de 120 a 180 ms que responden a una acción.
    Sin animaciones de entrada. Se respeta `prefers-reduced-motion`.
 5. **Texto en minúsculas normales.** Sin etiquetas en mayúsculas espaciadas ni rótulos
@@ -87,18 +88,21 @@ fijarán las plantillas.
 
 ## Componentes propios
 
-| Componente            | Ubicación                            | Uso                                           |
-| --------------------- | ------------------------------------ | --------------------------------------------- |
-| `Wordmark`            | `src/components/brand`               | Logotipo                                      |
-| `ShortcutKeys`        | `src/components`                     | Muestra un atajo como teclas                  |
-| `FullPageMessage`     | `src/components/feedback`            | Error y 404                                   |
-| `PaneFrame`           | `src/features/workspace/components`  | Marco común de los paneles                    |
-| `PaperSheet`          | `src/features/preview/components`    | La hoja A4 de la vista previa                 |
-| `SaveIndicator`       | `src/features/document/components`   | Estado de guardado del documento              |
-| `EditorToolbar`       | `src/features/editor/components`     | Controles de formato del editor               |
-| `ConversionAlert`     | `src/features/conversion/components` | Error de conversión sobre el último resultado |
-| `ConversionStatusBar` | `src/features/conversion/components` | Pie de un panel que alimenta el servidor      |
-| `DocumentSheet`       | `src/features/preview/components`    | El documento compuesto sobre la hoja          |
+| Componente            | Ubicación                             | Uso                                           |
+| --------------------- | ------------------------------------- | --------------------------------------------- |
+| `Wordmark`            | `src/components/brand`                | Logotipo                                      |
+| `ShortcutKeys`        | `src/components`                      | Muestra un atajo como teclas                  |
+| `FullPageMessage`     | `src/components/feedback`             | Error y 404                                   |
+| `PaneFrame`           | `src/features/workspace/components`   | Marco común de los paneles                    |
+| `PaperSheet`          | `src/features/preview/components`     | La hoja A4 de la vista previa                 |
+| `SaveIndicator`       | `src/features/document/components`    | Estado de guardado del documento              |
+| `EditorToolbar`       | `src/features/editor/components`      | Controles de formato del editor               |
+| `ConversionAlert`     | `src/features/conversion/components`  | Error de conversión sobre el último resultado |
+| `ConversionStatusBar` | `src/features/conversion/components`  | Pie de un panel que alimenta el servidor      |
+| `DocumentSheet`       | `src/features/preview/components`     | El documento compuesto sobre la hoja          |
+| `PdfDocument`         | `src/features/preview/components`     | El PDF compilado, página a página             |
+| `CompileProblems`     | `src/features/compilation/components` | Errores de LaTeX, con salto a la línea        |
+| `ExportMenu`          | `src/features/export/components`      | Las formas de sacar el documento              |
 
 ## Reglas
 
