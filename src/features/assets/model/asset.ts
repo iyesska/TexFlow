@@ -1,3 +1,12 @@
+import { ASSET_TYPES, type AssetType } from "@/contracts/assets";
+
+export {
+  ASSET_LIMITS,
+  ASSET_TYPES,
+  detectAssetType,
+  type AssetType,
+} from "@/contracts/assets";
+
 /** An image that belongs to a document, as it is persisted. */
 export interface StoredAsset {
   readonly documentId: string;
@@ -9,37 +18,8 @@ export interface StoredAsset {
   readonly addedAt: string;
 }
 
-/**
- * Formats both the browser and the LaTeX engine can read. SVG, GIF and WebP are left
- * out because LaTeX cannot include them.
- */
-export const ASSET_TYPES = { "image/png": "png", "image/jpeg": "jpg" } as const;
-
-export type AssetType = keyof typeof ASSET_TYPES;
-
-export const ASSET_LIMITS = {
-  maxBytes: 5 * 1024 * 1024,
-  maxPerDocument: 50,
-} as const;
-
 export type AssetRejection =
   "unsupported-type" | "too-large" | "too-many" | "storage-failed";
-
-const SIGNATURES: Readonly<Record<AssetType, readonly number[]>> = {
-  "image/png": [0x89, 0x50, 0x4e, 0x47],
-  "image/jpeg": [0xff, 0xd8, 0xff],
-};
-
-/**
- * The real type of a file, read from its first bytes. A file's declared type and
- * extension are whatever its sender says; the content is what LaTeX will have to read.
- */
-export function detectAssetType(head: Uint8Array): AssetType | null {
-  for (const type of Object.keys(SIGNATURES) as AssetType[]) {
-    if (SIGNATURES[type].every((byte, index) => head[index] === byte)) return type;
-  }
-  return null;
-}
 
 const MAX_BASE_LENGTH = 40;
 

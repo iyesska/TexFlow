@@ -45,6 +45,7 @@ describe("comboKeys", () => {
   it("uses the platform's symbols on macOS", () => {
     expect(comboKeys({ code: "KeyB", mod: true }, true)).toEqual(["⌘", "B"]);
     expect(comboKeys({ code: "Digit1", alt: true }, true)).toEqual(["⌥", "1"]);
+    expect(comboKeys({ code: "Enter", mod: true })).toEqual(["Ctrl", "Intro"]);
   });
 });
 
@@ -52,5 +53,6 @@ describe("codeMirrorKey", () => {
   it("writes combos in CodeMirror notation", () => {
     expect(codeMirrorKey({ code: "KeyB", mod: true })).toBe("Mod-b");
     expect(codeMirrorKey({ code: "Digit8", mod: true, shift: true })).toBe("Mod-Shift-8");
+    expect(codeMirrorKey({ code: "Enter", mod: true })).toBe("Mod-Enter");
   });
 });

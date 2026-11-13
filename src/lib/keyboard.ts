@@ -22,7 +22,10 @@ export function matchesCombo(event: ComboEvent, combo: KeyCombo): boolean {
   );
 }
 
-const baseKey = (combo: KeyCombo) => combo.code.replace(/^(Digit|Key)/, "");
+const KEY_NAMES: Readonly<Record<string, string>> = { Enter: "Intro" };
+
+const baseKey = (combo: KeyCombo) =>
+  KEY_NAMES[combo.code] ?? combo.code.replace(/^(Digit|Key)/, "");
 
 /** Key caps to display for a combo, in the order they are pressed. */
 export function comboKeys(combo: KeyCombo, isMac = false): string[] {
@@ -40,6 +43,8 @@ export function codeMirrorKey(combo: KeyCombo): string {
   if (combo.mod) parts.push("Mod");
   if (combo.alt) parts.push("Alt");
   if (combo.shift) parts.push("Shift");
-  parts.push(baseKey(combo).toLowerCase());
+  const key = combo.code.replace(/^(Digit|Key)/, "");
+  // Single characters are written in lower case; named keys keep their name.
+  parts.push(key.length === 1 ? key.toLowerCase() : key);
   return parts.join("-");
 }

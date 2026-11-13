@@ -10,4 +10,6 @@ export const LIMITS = {
    * character; the rest is room for the JSON envelope.
    */
   maxDocumentBodyBytes: 500_000 * 4 + 1024,
+  /** Largest compile request: the document plus the images it uses. */
+  maxCompileBodyBytes: 40 * 1024 * 1024,
 } as const;

@@ -123,6 +123,10 @@ export async function runPandoc(
         args: ["+RTS", `-M${PANDOC_HEAP}`, "-RTS", "--sandbox", ...options],
         stdin: markdown,
         limits: PANDOC_LIMITS,
+        // Pandoc's own --sandbox already keeps it off the file system; the OS sandbox
+        // is a second wall where the host offers one.
+        isolation: "preferred",
+        readOnlyPaths: [pandocResource()],
       }),
     MAX_QUEUE_WAIT_MS,
   );

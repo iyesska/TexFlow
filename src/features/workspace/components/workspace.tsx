@@ -1,6 +1,8 @@
 "use client";
 
 import { AssetLibraryProvider } from "@/features/assets/hooks/use-assets";
+import { CompilationShortcuts } from "@/features/compilation/components/compilation-shortcuts";
+import { CompilationProvider } from "@/features/compilation/hooks/use-compilation";
 import { DocumentShortcuts } from "@/features/document/components/document-shortcuts";
 import { DocumentProvider } from "@/features/document/hooks/use-document";
 import { EditorSessionCacheProvider } from "@/features/editor/hooks/use-editor-session-cache";
@@ -24,6 +26,7 @@ function WorkspaceShell() {
     <div className="flex h-dvh flex-col">
       <WorkspaceShortcuts splitView={splitView} />
       <DocumentShortcuts />
+      <CompilationShortcuts />
       <TopBar splitView={splitView} />
       <main className="min-h-0 flex-1 px-1.5 pb-1.5">
         {splitView ? <SplitView /> : <Pane pane={layout.active} withMenu={false} />}
@@ -38,9 +41,11 @@ export function Workspace({ initialLayout }: { initialLayout: WorkspaceLayout })
     <WorkspaceLayoutProvider initialLayout={initialLayout}>
       <DocumentProvider>
         <AssetLibraryProvider>
-          <EditorSessionCacheProvider>
-            <WorkspaceShell />
-          </EditorSessionCacheProvider>
+          <CompilationProvider>
+            <EditorSessionCacheProvider>
+              <WorkspaceShell />
+            </EditorSessionCacheProvider>
+          </CompilationProvider>
         </AssetLibraryProvider>
       </DocumentProvider>
     </WorkspaceLayoutProvider>

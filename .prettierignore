@@ -8,3 +8,5 @@ next-env.d.ts
 AGENTS.md
 src/app/fonts
 e2e/fixtures
+# Pandoc Markdown that Prettier would rewrite
+pandoc/warmup.md

@@ -1,4 +1,5 @@
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 
 import { markdownEditorExtensions, type EditorListeners } from "./extensions";
 
@@ -13,11 +14,29 @@ export interface EditorSessionCache {
   remember(state: EditorState): void;
   /** Starts sending editor events to `listeners`. Returns a function that stops it. */
   connect(listeners: EditorListeners): () => void;
+  /** Registers the mounted editor view. Returns a function that unregisters it. */
+  attach(view: EditorView): () => void;
+  /**
+   * Moves the cursor to a line (1-based) and scrolls it into view. If the editor is
+   * not on screen yet, it happens as soon as it is.
+   */
+  revealLine(line: number): void;
+}
+
+function reveal(view: EditorView, line: number): void {
+  const target = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+  view.dispatch({
+    selection: { anchor: target.from },
+    effects: EditorView.scrollIntoView(target.from, { y: "center" }),
+  });
+  view.focus();
 }
 
 export function createEditorSessionCache(): EditorSessionCache {
   let remembered: EditorState | null = null;
   let connected: EditorListeners | null = null;
+  let attached: EditorView | null = null;
+  let pendingLine: number | null = null;
 
   // The extensions outlive any one component, so they call through this relay.
   const relay: EditorListeners = {
@@ -36,6 +55,20 @@ export function createEditorSessionCache(): EditorSessionCache {
     },
     remember(state) {
       remembered = state;
+    },
+    attach(view) {
+      attached = view;
+      if (pendingLine !== null) {
+        reveal(view, pendingLine);
+        pendingLine = null;
+      }
+      return () => {
+        if (attached === view) attached = null;
+      };
+    },
+    revealLine(line) {
+      if (attached) reveal(attached, line);
+      else pendingLine = line;
     },
     connect(listeners) {
       connected = listeners;

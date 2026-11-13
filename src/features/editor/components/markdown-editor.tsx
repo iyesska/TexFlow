@@ -43,12 +43,14 @@ export function MarkdownEditor({
       onImageFiles: handleImageFiles,
     });
     const view = new EditorView({ state: initialState(), parent: host });
+    const detach = cache.attach(view);
     handleCursorChange(cursorPosition(view.state));
     handleViewChange(view);
 
     return () => {
       cache.remember(view.state);
       handleViewChange(null);
+      detach();
       disconnect();
       view.destroy();
     };

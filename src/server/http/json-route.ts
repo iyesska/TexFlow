@@ -2,11 +2,11 @@ import "server-only";
 
 import type { z } from "zod";
 
-import type { ConversionError, ConversionErrorCode } from "@/contracts/conversion";
+import type { CompileErrorCode } from "@/contracts/compilation";
 
 import { readJsonBody } from "./read-json";
 
-const STATUS_BY_ERROR: Readonly<Record<ConversionErrorCode, number>> = {
+const STATUS_BY_ERROR: Readonly<Record<CompileErrorCode, number>> = {
   "invalid-request": 400,
   "too-large": 413,
   syntax: 422,
@@ -14,12 +14,16 @@ const STATUS_BY_ERROR: Readonly<Record<ConversionErrorCode, number>> = {
   busy: 503,
   unavailable: 503,
   failed: 500,
+  "compile-error": 422,
 };
 
-type Failure = { readonly ok: false; readonly error: ConversionError };
+interface Failure {
+  readonly ok: false;
+  readonly error: { readonly code: CompileErrorCode; readonly message: string };
+}
 type Outcome = { readonly ok: true } | Failure;
 
-const TOO_LARGE: Failure = {
+export const TOO_LARGE: Failure = {
   ok: false,
   error: {
     code: "too-large",
@@ -27,12 +31,13 @@ const TOO_LARGE: Failure = {
   },
 };
 
-const INVALID: Failure = {
+export const INVALID: Failure = {
   ok: false,
   error: { code: "invalid-request", message: "La petición no es válida." },
 };
 
-function respond(body: Outcome): Response {
+/** A JSON answer whose HTTP status follows the outcome's error code. */
+export function respond(body: Outcome): Response {
   return Response.json(body, {
     status: body.ok ? 200 : STATUS_BY_ERROR[body.error.code],
     headers: { "Cache-Control": "no-store" },

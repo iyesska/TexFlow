@@ -18,6 +18,7 @@ export const SHORTCUTS = {
   } satisfies Record<PaneId, KeyCombo>,
   showAllPanes: { code: "Digit0", alt: true },
   saveDocument: { code: "KeyS", mod: true },
+  compile: { code: "Enter", mod: true },
   format: {
     bold: { code: "KeyB", mod: true },
     italic: { code: "KeyI", mod: true },
