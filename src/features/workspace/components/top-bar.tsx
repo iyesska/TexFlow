@@ -4,6 +4,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { Separator } from "@/components/ui/separator";
 import { DocumentTitle } from "@/features/document/components/document-title";
 import { ExportMenu } from "@/features/export/components/export-menu";
+import { DesignPanel } from "@/features/templates/components/design-panel";
 import { SaveIndicator } from "@/features/document/components/save-indicator";
 
 import { PaneSwitcher } from "./pane-switcher";
@@ -23,6 +24,7 @@ export function TopBar({ splitView }: { splitView: boolean }) {
         className="col-span-2 row-start-2 md:col-span-1 md:row-start-auto"
       />
       <div className="col-start-2 row-start-1 flex items-center justify-end gap-1.5 md:col-start-3">
+        <DesignPanel />
         <ExportMenu />
         <WorkspaceMenu />
       </div>

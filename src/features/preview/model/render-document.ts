@@ -1,5 +1,6 @@
 import katex from "katex";
 
+import { liftTableCaptions } from "./lift-table-captions";
 import { patchChildren } from "./patch-children";
 import { resolveImages, type ImageUrls } from "./resolve-images";
 import { sanitizePreviewHtml } from "./sanitize";
@@ -28,14 +29,31 @@ const renderMath = createCachedRenderer((tex, displayMode) => {
   return fragment;
 });
 
-/** Shows the server's preview HTML inside `container`, safely and incrementally. */
+export interface DocumentTargets {
+  /** Where the document goes. */
+  readonly body: Element;
+  /** Where the title block goes when it has a page of its own; null keeps it in place. */
+  readonly cover: Element | null;
+}
+
+/** Shows the server's preview HTML, safely and incrementally. */
 export function renderDocument(
-  container: Element,
+  targets: DocumentTargets,
   html: string,
   images: ImageUrls,
 ): void {
   const fragment = sanitizePreviewHtml(html);
+  liftTableCaptions(fragment);
   typesetMath(fragment, renderMath);
   resolveImages(fragment, images);
-  patchChildren(container, fragment);
+
+  if (targets.cover) {
+    const cover = document.createDocumentFragment();
+    const titleBlock = Array.from(fragment.children).find((element) =>
+      element.matches("header.title-block"),
+    );
+    if (titleBlock) cover.append(titleBlock);
+    patchChildren(targets.cover, cover);
+  }
+  patchChildren(targets.body, fragment);
 }

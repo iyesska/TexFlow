@@ -14,7 +14,7 @@ const ALLOWED_TAGS = [
   ..."a abbr aside blockquote br caption cite code col colgroup dd del div dl dt em".split(
     " ",
   ),
-  ..."figcaption figure h1 h2 h3 h4 h5 h6 header hr img input kbd label li mark ol p".split(
+  ..."figcaption figure h1 h2 h3 h4 h5 h6 header hr img input kbd label li mark nav ol p".split(
     " ",
   ),
   ..."pre q s section small span strong sub sup table tbody td tfoot th thead tr u ul".split(

@@ -1,7 +1,10 @@
-/** A document as it is persisted. */
+import type { DocumentSettings } from "@/templates/settings";
+
+/** A document as it is persisted: its text and how it is laid out. */
 export interface StoredDocument {
   readonly id: string;
   readonly markdown: string;
+  readonly settings: DocumentSettings;
   /** ISO 8601 timestamp of the last save. */
   readonly updatedAt: string;
 }

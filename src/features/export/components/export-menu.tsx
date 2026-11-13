@@ -44,7 +44,11 @@ export function ExportMenu() {
   const fetchLatex = async (): Promise<string> => {
     const response = await requestConversion(
       "/api/convert",
-      { markdown: markdown(), standalone: true },
+      {
+        markdown: markdown(),
+        standalone: true,
+        settings: session.getSnapshot().settings,
+      },
       convertResponseSchema,
       new AbortController().signal,
     );

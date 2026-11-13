@@ -163,6 +163,45 @@ POST /api/compile (multipart: markdown + imágenes)
 - **Exportación.** El ZIP del proyecto se arma en el navegador con las fuentes y las
   imágenes en una sola carpeta, que es donde el LaTeX las busca.
 
+## Plantillas (fase 6)
+
+Una plantilla es un conjunto de ajustes de diseño con nombre. Los ajustes son lo único
+que cambia el aspecto del documento; el texto nunca se toca.
+
+```
+src/templates/settings.ts   esquema Zod de los ajustes (compartido)
+src/templates/catalog.ts    las siete plantillas: nombre, estructura y ajustes
+        │
+        ├─► servidor: src/server/templates/latex-layout.ts
+        │     opciones de Pandoc (clase, papel, cuerpo, márgenes, idioma, índice…)
+        │     y un preámbulo LaTeX (fuentes, rótulos, portada, cabecera y pie, código)
+        │
+        └─► cliente: src/features/templates/model/preview-style.ts
+              variables CSS para la vista rápida (página, fuente, tamaños de LaTeX)
+```
+
+- **Ajustes cerrados.** Cada campo es un valor de una lista o un entero con límites, y
+  los márgenes se validan contra el papel (siempre quedan al menos 6 × 8 cm de texto).
+  Por eso el servidor puede escribirlos en el preámbulo sin escapar nada: ningún texto
+  del documento llega a él.
+- **Preámbulo por archivo.** Pandoc lo recibe con `--include-in-header`, como archivo del
+  directorio del trabajo; se escribe ahí, junto al documento, y se borra al terminar.
+- **Estructura.** Las plantillas de tipo libro (la Tesis) usan la clase `book`, con
+  `--top-level-division=chapter` y preliminares con numeración romana.
+- **Vista rápida fiel.** La hoja toma el papel y los márgenes de la plantilla, y el
+  texto, la misma fuente que el PDF (`src/app/fonts/document`), los tamaños reales de
+  las clases de LaTeX (el cuerpo de 11 pt es de 10,95 pt) y su interlineado. Los
+  rótulos («Figura», «Tabla», «Capítulo») siguen el idioma. Una portada propia se dibuja
+  en una hoja aparte.
+- **Persistencia.** Los ajustes se guardan con el documento y se validan al leerlos:
+  unos ajustes que ya no validan se sustituyen por los de la plantilla por defecto sin
+  perder el texto.
+- **Caché de paquetes.** `scripts/setup-tectonic.sh` compila, con red, un documento por
+  cada clase, cuerpo e idioma, cargando todas las fuentes y paquetes que pueden pedir
+  las plantillas (`pandoc/warmup-preamble.tex`). Las pruebas de
+  `src/server/compilation/templates.test.ts` compilan cada plantilla sin red y leen el
+  PDF resultante: si a la caché le falta algo, fallan.
+
 ## Modelo de seguridad
 
 Pandoc y LaTeX procesan contenido no confiable. Todo proceso externo pasa por
@@ -236,29 +275,33 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
 
 ## Decisiones tomadas
 
-| Decisión                                                 | Motivo                                                                     |
-| -------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.          |
-| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                         |
-| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.          |
-| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`.        |
-| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.                 |
-| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.           |
-| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                       |
-| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.             |
-| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.                 |
-| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.                  |
-| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.          |
-| KaTeX en el cliente, no en el servidor                   | Componer fórmulas es trabajo de CPU sin aislar; que lo haga quien escribe. |
-| Sanear con DOMPurify en el cliente                       | Usa el analizador real del navegador, en el punto de inserción.            |
-| Imágenes remotas no se muestran                          | El PDF se compila sin red; la vista previa no promete lo que no habrá.     |
-| Solo PNG y JPEG                                          | Son los formatos que el motor LaTeX puede incluir.                         |
-| Zoom con la propiedad CSS `zoom`                         | Escala también el diseño, así el desplazamiento sigue siendo correcto.     |
-| bubblewrap para aislar procesos                          | Aísla archivos, red y procesos sin privilegios de root.                    |
-| Sin aislamiento no se compila                            | Fallar cerrado: mejor no ofrecer el PDF que exponer el servidor.           |
-| PDF binario en la respuesta, avisos en cabecera          | Evita codificar el PDF en base64 dentro de un JSON.                        |
-| Compilar a petición, no en cada pausa                    | Es la operación más cara; la vista rápida ya da respuesta inmediata.       |
-| Paquetes LaTeX descargados de antemano                   | Permite compilar sin red.                                                  |
+| Decisión                                                 | Motivo                                                                                                    |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.                                         |
+| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                                                        |
+| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.                                         |
+| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`.                                       |
+| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.                                                |
+| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.                                          |
+| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                                                      |
+| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.                                            |
+| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.                                                |
+| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.                                                 |
+| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.                                         |
+| KaTeX en el cliente, no en el servidor                   | Componer fórmulas es trabajo de CPU sin aislar; que lo haga quien escribe.                                |
+| Sanear con DOMPurify en el cliente                       | Usa el analizador real del navegador, en el punto de inserción.                                           |
+| Imágenes remotas no se muestran                          | El PDF se compila sin red; la vista previa no promete lo que no habrá.                                    |
+| Solo PNG y JPEG                                          | Son los formatos que el motor LaTeX puede incluir.                                                        |
+| Zoom con la propiedad CSS `zoom`                         | Escala también el diseño, así el desplazamiento sigue siendo correcto.                                    |
+| bubblewrap para aislar procesos                          | Aísla archivos, red y procesos sin privilegios de root.                                                   |
+| Sin aislamiento no se compila                            | Fallar cerrado: mejor no ofrecer el PDF que exponer el servidor.                                          |
+| PDF binario en la respuesta, avisos en cabecera          | Evita codificar el PDF en base64 dentro de un JSON.                                                       |
+| Compilar a petición, no en cada pausa                    | Es la operación más cara; la vista rápida ya da respuesta inmediata.                                      |
+| Paquetes LaTeX descargados de antemano                   | Permite compilar sin red.                                                                                 |
+| Plantillas como datos, no como archivos `.latex`         | Un preámbulo generado desde ajustes validados; la plantilla de Pandoc sigue sirviendo para todo lo demás. |
+| Fuentes de la vista rápida = fuentes del PDF             | La vista rápida debe parecerse al resultado; las fuentes se cargan solo si la plantilla las usa.          |
+| Cabecera y pie solo en el PDF                            | En una hoja continua no hay páginas que numerar; mostrarlos sería inventar.                               |
+| Cambiar de plantilla reemplaza los ajustes               | La plantilla es un punto de partida; si se pierden ajustes hechos a mano, se puede deshacer.              |
 
 ## Riesgos conocidos
 
@@ -269,5 +312,8 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
   Es un compromiso: se debilita el aislamiento del contenedor para tener el de cada
   trabajo. La alternativa, para más adelante, es un servicio de compilación separado.
 - **Paquetes LaTeX fuera de la caché.** Un documento que cargue a mano un paquete no
-  descargado falla con un mensaje que lo dice. Las plantillas (fase 6) ampliarán el
-  documento de calentamiento con lo que necesiten.
+  descargado falla con un mensaje que lo dice. Las plantillas están cubiertas: sus
+  pruebas compilan cada una sin red.
+- **pdfLaTeX sin probar.** El preámbulo incluye una rama para pdfLaTeX (fuentes
+  `tgpagella`, `libertinus`…) para quien lleve el `.tex` a otro sistema. El motor del
+  proyecto es XeTeX y aquí no hay pdfLaTeX con el que comprobarla.

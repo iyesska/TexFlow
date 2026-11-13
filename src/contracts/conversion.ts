@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { LIMITS } from "@/config/limits";
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
+import { documentSettingsSchema } from "@/templates/settings";
+
+/** Design settings in a request. Omitted, the document gets the default template. */
+export const requestSettingsSchema = documentSettingsSchema.default(DEFAULT_SETTINGS);
 
 /**
  * The contracts of POST /api/convert and POST /api/preview, shared by the route
@@ -11,6 +16,7 @@ export const convertRequestSchema = z.object({
   markdown: z.string().max(LIMITS.maxMarkdownLength),
   /** A complete, compilable document (true) or only the body to paste elsewhere. */
   standalone: z.boolean().default(true),
+  settings: requestSettingsSchema,
 });
 
 export type ConvertRequest = z.infer<typeof convertRequestSchema>;
@@ -60,6 +66,7 @@ export const PREVIEW_ID_PREFIX = "pv-";
 
 export const previewRequestSchema = z.object({
   markdown: z.string().max(LIMITS.maxMarkdownLength),
+  settings: requestSettingsSchema,
 });
 
 export type PreviewRequest = z.infer<typeof previewRequestSchema>;

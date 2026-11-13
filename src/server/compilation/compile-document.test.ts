@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { findIsolation } from "@/server/sandbox/isolation";
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
 
 import { compileDocument, type CompileSettings } from "./compile-document";
 
@@ -24,7 +25,7 @@ const ready =
 const png = readFileSync(path.join(process.cwd(), "e2e/fixtures/Diagrama de prueba.png"));
 
 const compile = (markdown: string, images: Parameters<typeof compileDocument>[1] = []) =>
-  compileDocument(markdown, images, settings);
+  compileDocument(markdown, images, DEFAULT_SETTINGS, settings);
 
 describe.skipIf(!ready)("compileDocument", () => {
   it("compiles a document with formulas, a table and code to a PDF", async () => {
@@ -106,6 +107,7 @@ describe.skipIf(!ready)("compileDocument", () => {
     const result = await compileDocument(
       "\\loop\\iftrue\\repeat",
       [],
+      DEFAULT_SETTINGS,
       settings,
       AbortSignal.timeout(3000),
     );
@@ -120,7 +122,7 @@ describe.skipIf(!ready)("compileDocument", () => {
 
 describe("compileDocument without the toolchain", () => {
   it("says the feature is unavailable when Tectonic is missing", async () => {
-    const result = await compileDocument("x", [], {
+    const result = await compileDocument("x", [], DEFAULT_SETTINGS, {
       ...settings,
       tectonicPath: "/no/such/tectonic",
     });

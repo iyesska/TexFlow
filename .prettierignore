@@ -1,12 +1,13 @@
 .next
 node_modules
-pnpm-lock.yaml
 coverage
 playwright-report
 test-results
+pnpm-lock.yaml
 next-env.d.ts
 AGENTS.md
-src/app/fonts
 e2e/fixtures
-# Pandoc Markdown that Prettier would rewrite
+src/app/fonts
+# Pandoc Markdown and templates, whose syntax Prettier would rewrite
 pandoc/warmup.md
+pandoc/templates

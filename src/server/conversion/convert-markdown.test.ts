@@ -2,13 +2,17 @@
 import { describe, expect, it } from "vitest";
 
 import { LIMITS } from "@/config/limits";
+import { DEFAULT_SETTINGS, templateSettings } from "@/templates/catalog";
 
 import { withPreambleNotes } from "./body-requirements";
 import { convertMarkdownToLatex } from "./convert-markdown";
 
 /** Converts a body-only fragment and returns the LaTeX, failing the test on error. */
 async function body(markdown: string): Promise<string> {
-  const result = await convertMarkdownToLatex({ markdown, standalone: false }, "pandoc");
+  const result = await convertMarkdownToLatex(
+    { markdown, standalone: false, settings: DEFAULT_SETTINGS },
+    "pandoc",
+  );
   if (!result.ok) throw new Error(`Conversion failed: ${result.error.message}`);
   return result.latex;
 }
@@ -90,16 +94,50 @@ describe("standalone documents", () => {
   it("wraps the body in a complete document with the YAML metadata", async () => {
     const markdown =
       "---\ntitle: Mi tesis\nauthor: Ada\n---\n\n# Intro\n\n```c\nint x;\n```";
-    const result = await convertMarkdownToLatex({ markdown, standalone: true }, "pandoc");
+    const result = await convertMarkdownToLatex(
+      { markdown, standalone: true, settings: DEFAULT_SETTINGS },
+      "pandoc",
+    );
     if (!result.ok) throw new Error(result.error.message);
     expect(result.latex).toContain("\\documentclass");
-    expect(result.latex).toMatch(/\\documentclass\[\s*a4paper/);
+    expect(result.latex).toMatch(/\\documentclass\[[^\]]*a4paper[^\]]*\]\{article\}/);
     expect(result.latex).toContain("\\title{Mi tesis}");
     expect(result.latex).toContain("\\author{Ada}");
     expect(result.latex).toContain("\\begin{document}");
     expect(result.latex).toContain("\\usepackage{listings}");
     expect(result.latex).toContain("\\begin{lstlisting}[language=C]");
     expect(result.latex.trimEnd().endsWith("\\end{document}")).toBe(true);
+  });
+});
+
+describe("templates", () => {
+  const document = (settings: typeof DEFAULT_SETTINGS) =>
+    convertMarkdownToLatex(
+      { markdown: "# Uno\n\nTexto.", standalone: true, settings },
+      "pandoc",
+    );
+
+  it("lays the document out with the template's preamble", async () => {
+    const result = await document(templateSettings("technical-documentation"));
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.latex).toContain("\\setmainfont{texgyreheros}");
+    expect(result.latex).toContain("\\usepackage{fancyhdr}");
+    expect(result.latex).toContain("\\tableofcontents");
+    expect(result.latex).toMatch(/\\usepackage\[[^\]]*top=22mm[^\]]*\]\{geometry\}/);
+    expect(result.latex).toContain("\\babelprovide[main,import]{spanish}");
+  });
+
+  it("writes a thesis in chapters, in the full document and in the body alone", async () => {
+    const thesis = templateSettings("thesis");
+    const full = await document(thesis);
+    expect(full.ok && full.latex).toContain("\\chapter{Uno}");
+    expect(full.ok && full.latex).toContain("\\frontmatter");
+
+    const body = await convertMarkdownToLatex(
+      { markdown: "# Uno", standalone: false, settings: thesis },
+      "pandoc",
+    );
+    expect(body.ok && body.latex).toContain("\\chapter{Uno}");
   });
 });
 
@@ -123,7 +161,11 @@ describe("body-only fragments", () => {
 describe("failures", () => {
   it("reports a YAML error with its line", async () => {
     const result = await convertMarkdownToLatex(
-      { markdown: "---\ntitle: [a\n---\n\ntexto", standalone: true },
+      {
+        markdown: "---\ntitle: [a\n---\n\ntexto",
+        standalone: true,
+        settings: DEFAULT_SETTINGS,
+      },
       "pandoc",
     );
     expect(result).toMatchObject({ ok: false, error: { code: "syntax", line: 2 } });
@@ -131,13 +173,16 @@ describe("failures", () => {
 
   it("rejects a document over the size limit without running Pandoc", async () => {
     const markdown = "a".repeat(LIMITS.maxMarkdownLength + 1);
-    const result = await convertMarkdownToLatex({ markdown, standalone: true }, "pandoc");
+    const result = await convertMarkdownToLatex(
+      { markdown, standalone: true, settings: DEFAULT_SETTINGS },
+      "pandoc",
+    );
     expect(result).toMatchObject({ ok: false, error: { code: "too-large" } });
   });
 
   it("reports a missing Pandoc as unavailable", async () => {
     const result = await convertMarkdownToLatex(
-      { markdown: "x", standalone: true },
+      { markdown: "x", standalone: true, settings: DEFAULT_SETTINGS },
       "/no/such/pandoc",
     );
     expect(result).toMatchObject({ ok: false, error: { code: "unavailable" } });

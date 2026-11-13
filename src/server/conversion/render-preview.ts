@@ -5,10 +5,12 @@ import {
   type PreviewRequest,
   type PreviewResponse,
 } from "@/contracts/conversion";
+import { previewLayoutOptions } from "@/server/templates/latex-layout";
+import type { DocumentSettings } from "@/templates/settings";
 
 import { MARKDOWN_FORMAT, pandocResource, runPandoc } from "./pandoc";
 
-function previewOptions(): string[] {
+function previewOptions(settings: DocumentSettings): string[] {
   return [
     // Without native divs and spans, HTML tags in the document are raw HTML, which the
     // filter below removes, instead of elements carrying the author's attributes.
@@ -24,6 +26,7 @@ function previewOptions(): string[] {
     // A template makes Pandoc expect a page title and warn without one. Ours has no
     // <title>, so any value satisfies it.
     "--metadata=pagetitle:preview",
+    ...previewLayoutOptions(settings),
   ];
 }
 
@@ -37,7 +40,11 @@ export async function renderPreviewHtml(
   request: PreviewRequest,
   pandocPath: string,
 ): Promise<PreviewResponse> {
-  const result = await runPandoc(request.markdown, previewOptions(), pandocPath);
+  const result = await runPandoc(
+    request.markdown,
+    previewOptions(request.settings),
+    pandocPath,
+  );
   if (!result.ok) return result;
   return { ok: true, html: result.output, warnings: result.warnings };
 }

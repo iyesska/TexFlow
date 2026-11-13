@@ -7,6 +7,7 @@ import { ConversionAlert } from "@/features/conversion/components/conversion-ale
 import { ConversionStatusBar } from "@/features/conversion/components/conversion-status-bar";
 import {
   useDocumentMarkdown,
+  useDocumentSettings,
   useSaveStatus,
 } from "@/features/document/hooks/use-document";
 import { deriveTitle } from "@/features/document/model/document";
@@ -44,7 +45,12 @@ export function LatexWorkbench() {
   const [standalone, setStandalone] = useState(true);
   const isLoading = useSaveStatus() === "loading";
   const markdown = useDocumentMarkdown();
-  const conversion = useLatexConversion(isLoading ? null : markdown, standalone);
+  const settings = useDocumentSettings();
+  const conversion = useLatexConversion(
+    isLoading ? null : markdown,
+    standalone,
+    settings,
+  );
 
   const deferredMarkdown = useDeferredValue(markdown);
   const fileName = useMemo(

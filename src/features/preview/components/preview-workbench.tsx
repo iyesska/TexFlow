@@ -9,8 +9,10 @@ import { ConversionAlert } from "@/features/conversion/components/conversion-ale
 import { ConversionStatusBar } from "@/features/conversion/components/conversion-status-bar";
 import {
   useDocumentMarkdown,
+  useDocumentSettings,
   useSaveStatus,
 } from "@/features/document/hooks/use-document";
+import { pageWidthPx, previewStyle } from "@/features/templates/model/preview-style";
 import { useElementWidth } from "@/hooks/use-element-width";
 
 import { usePreviewHtml } from "../hooks/use-preview-html";
@@ -61,7 +63,11 @@ export function PreviewWorkbench() {
   const compilation = useCompilation();
   const { mode } = compilation;
   // The quick preview only works while it is the one on screen.
-  const preview = usePreviewHtml(isLoading || mode !== "quick" ? null : markdown);
+  const settings = useDocumentSettings();
+  const preview = usePreviewHtml(
+    isLoading || mode !== "quick" ? null : markdown,
+    settings,
+  );
   const images = useAssets();
 
   // Opening the PDF view compiles the document if what is there is out of date.
@@ -74,7 +80,7 @@ export function PreviewWorkbench() {
 
   // Until the pane has been measured there is no sensible scale to draw at.
   // The PDF's pages have their own size; the quick preview's sheet is always A4.
-  const sheetWidth = mode === "pdf" ? pdfPageWidth : undefined;
+  const sheetWidth = mode === "pdf" ? pdfPageWidth : pageWidthPx(settings);
   const scale = width === null ? null : effectiveScale(zoom, width, sheetWidth);
   const showsPages =
     mode === "pdf" &&
@@ -126,13 +132,19 @@ export function PreviewWorkbench() {
             onCurrentPage={setCurrentPage}
           />
         ) : (
-          <div className="w-max min-w-full px-5 py-6">
+          // The template's page, type and language, for the sheets inside.
+          <div className="w-max min-w-full px-5 py-6" style={previewStyle(settings)}>
             {preview.value === null ? (
               preview.error ? null : (
                 <SheetSkeleton scale={scale} />
               )
             ) : (
-              <DocumentSheet html={preview.value} images={images} scale={scale} />
+              <DocumentSheet
+                html={preview.value}
+                images={images}
+                scale={scale}
+                settings={settings}
+              />
             )}
           </div>
         )}

@@ -6,6 +6,7 @@ import {
   type CompileFailure,
   type Diagnostic,
 } from "@/contracts/compilation";
+import type { DocumentSettings } from "@/templates/settings";
 
 export type CompilationOutcome =
   | { readonly ok: true; readonly pdf: Uint8Array; readonly warnings: Diagnostic[] }
@@ -33,10 +34,12 @@ function readWarnings(header: string | null): Diagnostic[] {
 export async function requestCompilation(
   markdown: string,
   images: readonly { readonly name: string; readonly blob: Blob }[],
+  settings: DocumentSettings,
   signal: AbortSignal,
 ): Promise<CompilationOutcome> {
   const form = new FormData();
   form.set(COMPILE_FIELDS.markdown, markdown);
+  form.set(COMPILE_FIELDS.settings, JSON.stringify(settings));
   for (const { name, blob } of images) form.append(COMPILE_FIELDS.image, blob, name);
 
   let response: Response;

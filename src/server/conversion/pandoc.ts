@@ -6,6 +6,7 @@ import type { ConversionError } from "@/contracts/conversion";
 import { LIMITS } from "@/config/limits";
 import {
   runProcess,
+  type JobFile,
   type ProcessLimits,
   type ProcessResult,
 } from "@/server/sandbox/run-process";
@@ -108,6 +109,8 @@ export async function runPandoc(
   markdown: string,
   options: readonly string[],
   pandocPath: string,
+  /** Files of ours the options refer to, such as a generated preamble. */
+  files: readonly JobFile[] = [],
 ): Promise<PandocResult> {
   if (markdown.length > LIMITS.maxMarkdownLength) {
     return failure({
@@ -122,6 +125,7 @@ export async function runPandoc(
         command: pandocPath,
         args: ["+RTS", `-M${PANDOC_HEAP}`, "-RTS", "--sandbox", ...options],
         stdin: markdown,
+        files,
         limits: PANDOC_LIMITS,
         // Pandoc's own --sandbox already keeps it off the file system; the OS sandbox
         // is a second wall where the host offers one.

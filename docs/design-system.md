@@ -79,6 +79,15 @@ los tokens `ink`, `ink-muted`, `paper-rule` y `paper-error`, y medidas en `pt` y
 escalar con el zoom. La geometría de página sale de las propiedades `--page-*`, que
 fijarán las plantillas.
 
+### Las fuentes del documento
+
+La hoja de la vista rápida usa la fuente de la plantilla, la misma que incrusta el PDF:
+Libertinus, Latin Modern, TeX Gyre Pagella, Termes y Heros. Están en
+`src/app/fonts/document`, sin modificar, con su licencia, y se declaran sin precarga:
+el navegador solo descarga la familia que usa el documento. En la biblioteca de
+plantillas, el nombre de cada una se escribe en su propia fuente, que es lo que mejor
+la distingue.
+
 ### Forma y profundidad
 
 - Radio base de 8 px; los paneles usan `rounded-xl`.
@@ -88,21 +97,23 @@ fijarán las plantillas.
 
 ## Componentes propios
 
-| Componente            | Ubicación                             | Uso                                           |
-| --------------------- | ------------------------------------- | --------------------------------------------- |
-| `Wordmark`            | `src/components/brand`                | Logotipo                                      |
-| `ShortcutKeys`        | `src/components`                      | Muestra un atajo como teclas                  |
-| `FullPageMessage`     | `src/components/feedback`             | Error y 404                                   |
-| `PaneFrame`           | `src/features/workspace/components`   | Marco común de los paneles                    |
-| `PaperSheet`          | `src/features/preview/components`     | La hoja A4 de la vista previa                 |
-| `SaveIndicator`       | `src/features/document/components`    | Estado de guardado del documento              |
-| `EditorToolbar`       | `src/features/editor/components`      | Controles de formato del editor               |
-| `ConversionAlert`     | `src/features/conversion/components`  | Error de conversión sobre el último resultado |
-| `ConversionStatusBar` | `src/features/conversion/components`  | Pie de un panel que alimenta el servidor      |
-| `DocumentSheet`       | `src/features/preview/components`     | El documento compuesto sobre la hoja          |
-| `PdfDocument`         | `src/features/preview/components`     | El PDF compilado, página a página             |
-| `CompileProblems`     | `src/features/compilation/components` | Errores de LaTeX, con salto a la línea        |
-| `ExportMenu`          | `src/features/export/components`      | Las formas de sacar el documento              |
+| Componente            | Ubicación                             | Uso                                             |
+| --------------------- | ------------------------------------- | ----------------------------------------------- |
+| `Wordmark`            | `src/components/brand`                | Logotipo                                        |
+| `ShortcutKeys`        | `src/components`                      | Muestra un atajo como teclas                    |
+| `FullPageMessage`     | `src/components/feedback`             | Error y 404                                     |
+| `PaneFrame`           | `src/features/workspace/components`   | Marco común de los paneles                      |
+| `PaperSheet`          | `src/features/preview/components`     | La hoja A4 de la vista previa                   |
+| `SaveIndicator`       | `src/features/document/components`    | Estado de guardado del documento                |
+| `EditorToolbar`       | `src/features/editor/components`      | Controles de formato del editor                 |
+| `ConversionAlert`     | `src/features/conversion/components`  | Error de conversión sobre el último resultado   |
+| `ConversionStatusBar` | `src/features/conversion/components`  | Pie de un panel que alimenta el servidor        |
+| `DocumentSheet`       | `src/features/preview/components`     | El documento compuesto sobre la hoja            |
+| `PdfDocument`         | `src/features/preview/components`     | El PDF compilado, página a página               |
+| `CompileProblems`     | `src/features/compilation/components` | Errores de LaTeX, con salto a la línea          |
+| `ExportMenu`          | `src/features/export/components`      | Las formas de sacar el documento                |
+| `DesignPanel`         | `src/features/templates/components`   | Panel lateral de plantilla y ajustes            |
+| `TemplateThumbnail`   | `src/features/templates/components`   | Miniatura de la primera página de una plantilla |
 
 ## Reglas
 

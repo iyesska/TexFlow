@@ -4,6 +4,7 @@ import type { CompileFailure, Diagnostic } from "@/contracts/compilation";
 import { convertMarkdownToLatex } from "@/server/conversion/convert-markdown";
 import { runProcess, type ProcessLimits } from "@/server/sandbox/run-process";
 import { createSemaphore } from "@/server/sandbox/semaphore";
+import type { DocumentSettings } from "@/templates/settings";
 
 import { parseDiagnostics } from "./diagnostics";
 
@@ -57,11 +58,12 @@ const failure = (error: CompileFailure["error"]): CompileFailure => ({
 export async function compileDocument(
   markdown: string,
   images: readonly CompileImage[],
+  design: DocumentSettings,
   settings: CompileSettings,
   signal?: AbortSignal,
 ): Promise<CompileResult> {
   const converted = await convertMarkdownToLatex(
-    { markdown, standalone: true },
+    { markdown, standalone: true, settings: design },
     settings.pandocPath,
   );
   if (!converted.ok) return converted;

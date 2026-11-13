@@ -16,7 +16,7 @@ en verde y esta tabla actualizada.
 | 3    | Conversión Markdown a LaTeX con Pandoc en el backend           | Completada |
 | 4    | Vista previa con KaTeX, tablas, imágenes y zoom                | Completada |
 | 5    | Compilación PDF con Tectonic y exportaciones                   | Completada |
-| 6    | Plantillas documentales                                        | Pendiente  |
+| 6    | Plantillas documentales                                        | Completada |
 | 7    | Usuarios (Auth.js) y documentos (PostgreSQL + Prisma)          | Pendiente  |
 | 8    | Bibliografía BibTeX, historial de versiones, onboarding        | Pendiente  |
 
@@ -95,6 +95,28 @@ PDF y exportaciones (fase 5):
   tiene red y no puede ejecutar comandos. Si el servidor no puede aislarlo, la
   compilación se niega a ejecutarse en lugar de hacerlo sin protección.
 
+Plantillas (fase 6):
+
+- Siete plantillas: Artículo académico, Trabajo universitario, Artículo de investigación,
+  Tesis, Documentación técnica, Informe matemático y Documento mínimo.
+- Cada una fija tamaño de papel, márgenes, tipografía, cuerpo, interlineado, cabecera,
+  pie de página, numeración de secciones, índice y portada. Todo se puede ajustar a mano
+  y restablecer.
+- Panel **Diseño**: biblioteca de plantillas con miniaturas y todos los ajustes. No es
+  modal: la vista previa sigue a la vista y cambia con cada ajuste.
+- Cambiar de plantilla nunca toca el texto. Si se pierden ajustes hechos a mano, se
+  puede deshacer.
+- La Tesis se compone como un libro: capítulos, portada, resumen e índice con
+  numeración romana, y cuerpo con numeración arábiga.
+- Cinco tipografías: Libertinus, Latin Modern, Pagella (estilo Palatino), Termes (estilo
+  Times) y Heros (sin remates, estilo Helvetica). La vista rápida usa las mismas fuentes
+  que el PDF.
+- Idioma del documento: español o inglés. Decide la división de palabras y los rótulos
+  («Figura», «Tabla», «Índice», «Capítulo»).
+- La plantilla y los ajustes se guardan con el documento.
+- El documento LaTeX completo lleva el preámbulo de la plantilla. Compila con XeLaTeX o
+  LuaLaTeX, y elige fuentes equivalentes si se compila con pdfLaTeX.
+
 Límites actuales:
 
 - La vista rápida es una aproximación continua, sin saltos de página. La composición
@@ -105,8 +127,9 @@ Límites actuales:
 - Las imágenes añadidas no se pueden listar ni borrar todavía.
 - Los paquetes LaTeX disponibles son los que usa la conversión. Un `\usepackage` de
   otro paquete, escrito a mano, da un error que lo indica.
-- El preámbulo del documento LaTeX es el genérico de Pandoc; las plantillas propias
-  llegan en la fase 6.
+- La vista rápida no dibuja la cabecera ni el pie de página: se ven en la vista PDF.
+- La rama de pdfLaTeX del preámbulo (para llevar el `.tex` a Overleaf, por ejemplo) no se
+  ha podido probar aquí: el motor del proyecto es XeTeX.
 
 ### Atajos de teclado
 
@@ -246,6 +269,10 @@ src/
 │  │  ├─ hooks/         PDF compartido por la vista previa y la exportación
 │  │  └─ components/    Lista de problemas y atajo de compilar
 │  ├─ export/           Menú Exportar y archivo ZIP del proyecto
+│  ├─ templates/        Panel Diseño
+│  │  ├─ model/         Estilo de la vista previa según la plantilla, y rótulos
+│  │  ├─ hooks/         Aplicar plantillas y cambiar ajustes, con validación
+│  │  └─ components/    Biblioteca, miniaturas y formulario de ajustes
 │  └─ preview/          Vista previa
 │     ├─ model/         Saneado del HTML, fórmulas, imágenes, parcheo del DOM y zoom
 │     ├─ hooks/         HTML de la vista previa
@@ -254,13 +281,15 @@ src/
 │  ├─ sandbox/          Ejecución aislada de procesos y límite de concurrencia
 │  ├─ conversion/       Pandoc: ejecución común, LaTeX y HTML de la vista previa
 │  ├─ compilation/      Tectonic: compilación y explicación de sus errores
+│  ├─ templates/        Opciones de Pandoc y preámbulo LaTeX de cada diseño
 │  └─ http/             Lectura segura de cuerpos de petición
 ├─ contracts/           Esquemas de la API compartidos por cliente y servidor
+├─ templates/           Plantillas y ajustes de diseño, compartidos por cliente y servidor
 ├─ hooks/               Hooks compartidos (atajos, media queries)
 ├─ config/              Entorno validado, atajos, datos del sitio
 ├─ lib/                 Utilidades puras y piezas de CodeMirror compartidas
 └─ styles/              Tokens de diseño y colores de sintaxis
-pandoc/                 Filtro, plantilla y documento de calentamiento para Pandoc
+pandoc/                 Filtro, plantilla y documentos de calentamiento para Pandoc y LaTeX
 scripts/                Instalación de Tectonic y descarga de sus paquetes
 docker/                 Imagen y compose de despliegue
 e2e/                    Tests Playwright
@@ -276,11 +305,20 @@ La carpeta `prisma` aparecerá con la fase 7.
 Convierte Markdown a LaTeX.
 
 ```json
-{ "markdown": "# Hola", "standalone": true }
+{
+  "markdown": "# Hola",
+  "standalone": true,
+  "settings": { "templateId": "thesis", "...": "..." }
+}
 ```
 
 `standalone` es opcional (por defecto `true`): `true` devuelve un documento completo y
 `false` solo el cuerpo. El documento admite hasta 500 000 caracteres.
+
+`settings` son los ajustes de diseño, opcionales en las tres rutas: sin ellos se usa la
+plantilla Artículo académico. Su forma está en `src/templates/settings.ts`; todos los
+campos son valores de una lista cerrada o números con límites, y la petición se rechaza
+si alguno no lo es.
 
 Respuesta correcta (`200`):
 
@@ -331,6 +369,7 @@ Compila el documento a PDF. La petición es `multipart/form-data`:
 | ---------- | ------------------------------------------------------------------- |
 | `markdown` | El documento                                                        |
 | `image`    | Un archivo por imagen, con el nombre que usa el Markdown. Repetible |
+| `settings` | Los ajustes de diseño, como JSON. Opcional                          |
 
 Respuesta correcta (`200`): el PDF (`application/pdf`). Los avisos de LaTeX van en la
 cabecera `X-Texflow-Warnings`, como JSON codificado para URL.

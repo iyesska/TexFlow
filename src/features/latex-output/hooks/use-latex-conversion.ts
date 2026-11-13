@@ -7,15 +7,17 @@ import {
   type ConversionOutcome,
 } from "@/features/conversion/hooks/use-conversion";
 import { requestConversion } from "@/features/conversion/model/request-conversion";
+import { settingsKey, type DocumentSettings } from "@/templates/settings";
 
 async function convertToLatex(
   markdown: string,
   standalone: boolean,
+  settings: DocumentSettings,
   signal: AbortSignal,
 ): Promise<ConversionOutcome<string>> {
   const response = await requestConversion(
     "/api/convert",
-    { markdown, standalone },
+    { markdown, standalone, settings },
     convertResponseSchema,
     signal,
   );
@@ -24,14 +26,16 @@ async function convertToLatex(
 }
 
 /**
- * The LaTeX for the document, converted on the server and kept up to date.
- * `markdown` is null until the document has loaded.
+ * The LaTeX for the document, laid out by its design settings, converted on the
+ * server and kept up to date. `markdown` is null until the document has loaded.
  */
 export function useLatexConversion(
   markdown: string | null,
   standalone: boolean,
+  settings: DocumentSettings,
 ): Conversion<string> {
-  return useConversion(markdown, standalone ? "document" : "body", (text, signal) =>
-    convertToLatex(text, standalone, signal),
+  const variant = `${standalone ? "document" : "body"}:${settingsKey(settings)}`;
+  return useConversion(markdown, variant, (text, signal) =>
+    convertToLatex(text, standalone, settings, signal),
   );
 }

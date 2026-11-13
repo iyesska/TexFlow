@@ -9,6 +9,9 @@ import {
   type ReactNode,
 } from "react";
 
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
+import type { DocumentSettings } from "@/templates/settings";
+
 import { LOCAL_DOCUMENT_ID } from "../model/document";
 import {
   createDocumentSession,
@@ -27,6 +30,7 @@ function createLocalSession(): DocumentSession {
     id: LOCAL_DOCUMENT_ID,
     store: createLocalDocumentStore(() => window.localStorage),
     initialMarkdown: SAMPLE_DOCUMENT,
+    initialSettings: DEFAULT_SETTINGS,
     autosaveDelayMs: AUTOSAVE_DELAY_MS,
   });
 }
@@ -77,5 +81,15 @@ export function useDocumentMarkdown(): string {
     session.subscribe,
     () => session.getSnapshot().markdown,
     () => "",
+  );
+}
+
+/** The document's design settings. Re-renders when the design changes. */
+export function useDocumentSettings(): DocumentSettings {
+  const session = useDocumentSession();
+  return useSyncExternalStore(
+    session.subscribe,
+    () => session.getSnapshot().settings,
+    () => DEFAULT_SETTINGS,
   );
 }

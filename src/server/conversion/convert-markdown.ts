@@ -1,37 +1,53 @@
 import "server-only";
 
 import type { ConvertRequest, ConvertResponse } from "@/contracts/conversion";
+import { latexLayout, PREAMBLE_FILE } from "@/server/templates/latex-layout";
+import { templateById } from "@/templates/catalog";
+import type { DocumentSettings } from "@/templates/settings";
 
 import { withPreambleNotes } from "./body-requirements";
 import { MARKDOWN_FORMAT, runPandoc } from "./pandoc";
 
-function latexOptions(standalone: boolean): string[] {
-  return [
-    `--from=${MARKDOWN_FORMAT}`,
-    "--to=latex",
-    "--wrap=preserve",
-    // A whole document can load the listings package; a fragment must stand alone.
-    // A4 until the document templates set the page: LaTeX would default to US letter.
-    ...(standalone
-      ? ["--standalone", "--listings", "--variable=papersize:a4"]
-      : ["--no-highlight"]),
-  ];
+const COMMON_OPTIONS = [`--from=${MARKDOWN_FORMAT}`, "--to=latex", "--wrap=preserve"];
+
+/** A fragment needs no preamble, only the right sectioning commands. */
+function bodyOptions(settings: DocumentSettings): string[] {
+  const chapters = templateById(settings.templateId).structure === "book";
+  return ["--no-highlight", ...(chapters ? ["--top-level-division=chapter"] : [])];
 }
 
-/** Converts Markdown to LaTeX with Pandoc, inside the process sandbox. */
+/**
+ * Converts Markdown to LaTeX with Pandoc, inside the process sandbox: a complete
+ * document laid out by the design settings, or a body to paste elsewhere.
+ */
 export async function convertMarkdownToLatex(
   request: ConvertRequest,
   pandocPath: string,
 ): Promise<ConvertResponse> {
+  const { markdown, standalone, settings } = request;
+
+  if (!standalone) {
+    const result = await runPandoc(
+      markdown,
+      [...COMMON_OPTIONS, ...bodyOptions(settings)],
+      pandocPath,
+    );
+    if (!result.ok) return result;
+    return {
+      ok: true,
+      latex: withPreambleNotes(result.output),
+      warnings: result.warnings,
+    };
+  }
+
+  const layout = latexLayout(settings);
   const result = await runPandoc(
-    request.markdown,
-    latexOptions(request.standalone),
+    markdown,
+    // A whole document can load the listings package for its code blocks.
+    [...COMMON_OPTIONS, "--standalone", "--listings", ...layout.options],
     pandocPath,
+    [{ name: PREAMBLE_FILE, data: layout.preamble }],
   );
   if (!result.ok) return result;
-  return {
-    ok: true,
-    latex: request.standalone ? result.output : withPreambleNotes(result.output),
-    warnings: result.warnings,
-  };
+  return { ok: true, latex: result.output, warnings: result.warnings };
 }

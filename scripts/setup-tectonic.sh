@@ -27,16 +27,30 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$CACHE_DIR"
 cp "$ROOT/pandoc/warmup.png" "$work/"
 
-# The same conversion the application runs, so the same packages are requested.
-pandoc --sandbox --from=markdown+ascii_identifiers --to=latex --standalone --listings \
-  --variable=papersize:a4 \
-  < "$ROOT/pandoc/warmup.md" > "$work/main.tex"
+cp "$ROOT/pandoc/warmup-preamble.tex" "$work/"
+
+# Every class, size and language the templates combine, each with all the fonts and
+# page-style packages they can use. The conversion options match the application's.
+for class in article book; do
+  for size in 10 11 12; do
+    for lang in es en; do
+      name="$class-$size-$lang"
+      options=(--variable=documentclass:"$class" --variable=fontsize:"$size"pt --variable=lang:"$lang")
+      if [ "$class" = book ]; then
+        options+=(--variable=classoption:oneside --variable=classoption:openany --top-level-division=chapter)
+      fi
+      pandoc --sandbox --from=markdown+ascii_identifiers --to=latex --standalone --listings \
+        --number-sections --toc --variable=papersize:a4 --variable=linestretch:1.5 \
+        --variable=geometry:top=25mm --variable=geometry:headheight=15pt \
+        --include-in-header="$work/warmup-preamble.tex" "${options[@]}" \
+        < "$ROOT/pandoc/warmup.md" > "$work/$name.tex"
+      (cd "$work" && TECTONIC_CACHE_DIR="$CACHE_DIR" tectonic --chatter minimal "$name.tex")
+    done
+  done
+done
 
 # A bare article too: documents without metadata load the default fonts.
 printf '\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n' > "$work/plain.tex"
-
-for source in main.tex plain.tex; do
-  (cd "$work" && TECTONIC_CACHE_DIR="$CACHE_DIR" tectonic --chatter minimal "$source")
-done
+(cd "$work" && TECTONIC_CACHE_DIR="$CACHE_DIR" tectonic --chatter minimal plain.tex)
 
 echo "Tectonic ${TECTONIC_VERSION} listo. Caché en $CACHE_DIR ($(du -sh "$CACHE_DIR" | cut -f1))."

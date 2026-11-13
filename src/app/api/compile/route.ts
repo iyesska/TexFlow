@@ -13,6 +13,8 @@ import {
 } from "@/server/compilation/compile-document";
 import { INVALID, respond, TOO_LARGE } from "@/server/http/json-route";
 import { readBodyBytes } from "@/server/http/read-body";
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
+import { documentSettingsSchema, type DocumentSettings } from "@/templates/settings";
 
 /** Headers have a size limit of their own; warnings beyond it are dropped. */
 const MAX_WARNINGS_HEADER_LENGTH = 6000;
@@ -30,9 +32,27 @@ async function readImage(file: File): Promise<CompileImage | null> {
   return { name: file.name, data };
 }
 
+/** The design settings field: absent means the default template, malformed is refused. */
+function readSettings(field: FormDataEntryValue | null): DocumentSettings | null {
+  if (field === null) return DEFAULT_SETTINGS;
+  if (typeof field !== "string") return null;
+  try {
+    const parsed = documentSettingsSchema.safeParse(JSON.parse(field));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+interface CompileForm {
+  readonly markdown: string;
+  readonly images: CompileImage[];
+  readonly settings: DocumentSettings;
+}
+
 async function readForm(
   request: Request,
-): Promise<{ markdown: string; images: CompileImage[] } | "too-large" | "invalid"> {
+): Promise<CompileForm | "too-large" | "invalid"> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("multipart/form-data")) return "invalid";
 
@@ -52,6 +72,9 @@ async function readForm(
   if (typeof markdown !== "string") return "invalid";
   if (markdown.length > LIMITS.maxMarkdownLength) return "too-large";
 
+  const settings = readSettings(form.get(COMPILE_FIELDS.settings));
+  if (settings === null) return "invalid";
+
   const files = form.getAll(COMPILE_FIELDS.image);
   if (files.length > ASSET_LIMITS.maxPerDocument) return "invalid";
   const images: CompileImage[] = [];
@@ -61,7 +84,7 @@ async function readForm(
       return "invalid";
     images.push(image);
   }
-  return { markdown, images };
+  return { markdown, images, settings };
 }
 
 /** Compiles a Markdown document, with its images, to PDF. */
@@ -73,6 +96,7 @@ export async function POST(request: Request): Promise<Response> {
   const result = await compileDocument(
     form.markdown,
     form.images,
+    form.settings,
     {
       pandocPath: env.PANDOC_PATH,
       tectonicPath: env.TECTONIC_PATH,

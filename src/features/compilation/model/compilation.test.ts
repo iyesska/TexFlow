@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { COMPILE_WARNINGS_HEADER } from "@/contracts/compilation";
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
 
 import { requestCompilation } from "./request-compilation";
 import { compilationKey, imagesUsedBy } from "./used-images";
@@ -18,10 +19,11 @@ describe("imagesUsedBy", () => {
 
 describe("compilationKey", () => {
   it("changes with the text or the set of images, not with their order", () => {
-    const key = compilationKey("texto", ["b.png", "a.png"]);
-    expect(compilationKey("texto", ["a.png", "b.png"])).toBe(key);
-    expect(compilationKey("texto!", ["a.png", "b.png"])).not.toBe(key);
-    expect(compilationKey("texto", ["a.png"])).not.toBe(key);
+    const key = compilationKey("texto", ["b.png", "a.png"], "diseño");
+    expect(compilationKey("texto", ["a.png", "b.png"], "diseño")).toBe(key);
+    expect(compilationKey("texto!", ["a.png", "b.png"], "diseño")).not.toBe(key);
+    expect(compilationKey("texto", ["a.png"], "diseño")).not.toBe(key);
+    expect(compilationKey("texto", ["a.png", "b.png"], "otro diseño")).not.toBe(key);
   });
 });
 
@@ -35,6 +37,7 @@ describe("requestCompilation", () => {
     await requestCompilation(
       "# Hola",
       [{ name: "a.png", blob: new Blob(["png"]) }],
+      DEFAULT_SETTINGS,
       signal,
     );
 
@@ -43,6 +46,7 @@ describe("requestCompilation", () => {
     expect(url).toBe("/api/compile");
     expect(form.get("markdown")).toBe("# Hola");
     expect((form.get("image") as File).name).toBe("a.png");
+    expect(JSON.parse(form.get("settings") as string)).toEqual(DEFAULT_SETTINGS);
   });
 
   it("returns the PDF and its warnings", async () => {
@@ -57,7 +61,7 @@ describe("requestCompilation", () => {
           },
         }),
     );
-    const outcome = await requestCompilation("x", [], signal);
+    const outcome = await requestCompilation("x", [], DEFAULT_SETTINGS, signal);
     expect(outcome).toEqual({
       ok: true,
       pdf: new Uint8Array([37, 80, 68, 70]),
@@ -77,20 +81,20 @@ describe("requestCompilation", () => {
       },
     };
     vi.stubGlobal("fetch", async () => Response.json(body, { status: 422 }));
-    expect(await requestCompilation("x", [], signal)).toEqual(body);
+    expect(await requestCompilation("x", [], DEFAULT_SETTINGS, signal)).toEqual(body);
   });
 
   it("turns a network failure or a garbled answer into an error", async () => {
     vi.stubGlobal("fetch", async () => {
       throw new TypeError("offline");
     });
-    expect(await requestCompilation("x", [], signal)).toMatchObject({
+    expect(await requestCompilation("x", [], DEFAULT_SETTINGS, signal)).toMatchObject({
       ok: false,
       error: { code: "unavailable" },
     });
 
     vi.stubGlobal("fetch", async () => new Response("<html>", { status: 502 }));
-    expect(await requestCompilation("x", [], signal)).toMatchObject({
+    expect(await requestCompilation("x", [], DEFAULT_SETTINGS, signal)).toMatchObject({
       ok: false,
       error: { code: "failed" },
     });

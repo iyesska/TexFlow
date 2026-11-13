@@ -16,7 +16,9 @@ import { useAssetLibrary, useAssets } from "@/features/assets/hooks/use-assets";
 import {
   useDocumentMarkdown,
   useDocumentSession,
+  useDocumentSettings,
 } from "@/features/document/hooks/use-document";
+import { settingsKey } from "@/templates/settings";
 
 import {
   requestCompilation,
@@ -64,6 +66,7 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
   const session = useDocumentSession();
   const library = useAssetLibrary();
   const markdown = useDocumentMarkdown();
+  const settings = useDocumentSettings();
   const assets = useAssets();
   const [state, setState] = useState(INITIAL_STATE);
   const [mode, setMode] = useState<PreviewMode>("quick");
@@ -76,15 +79,16 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     inFlight.current = controller;
 
-    const text = session.getSnapshot().markdown;
+    const { markdown: text, settings: design } = session.getSnapshot();
     const images = imagesUsedBy(text, library.getSnapshot().values());
     const key = compilationKey(
       text,
       images.map(({ name }) => name),
+      settingsKey(design),
     );
 
     setState((current) => ({ ...current, isCompiling: true }));
-    const outcome = await requestCompilation(text, images, controller.signal);
+    const outcome = await requestCompilation(text, images, design, controller.signal);
     if (controller.signal.aborted) return null;
 
     setState((current) =>
@@ -112,11 +116,12 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
     const currentKey = compilationKey(
       markdown,
       imagesUsedBy(markdown, assets.values()).map(({ name }) => name),
+      settingsKey(settings),
     );
     const isStale = state.compiledKey !== currentKey;
     const hasProblems = state.error !== null && !state.isCompiling && !isStale;
     return { ...state, isStale, hasProblems, mode, setMode, compile };
-  }, [assets, compile, markdown, mode, state]);
+  }, [assets, compile, markdown, mode, settings, state]);
 
   return <CompilationContext value={value}>{children}</CompilationContext>;
 }

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_SETTINGS, templateSettings } from "@/templates/catalog";
+
 import type { StoredDocument } from "./document";
 import { createDocumentSession } from "./document-session";
 import { createLocalDocumentStore, type DocumentStore } from "./document-store";
@@ -22,6 +24,7 @@ const session = (store: DocumentStore) =>
     id: "doc",
     store,
     initialMarkdown: "# Ejemplo",
+    initialSettings: DEFAULT_SETTINGS,
     autosaveDelayMs: 500,
     now: () => new Date("2026-01-01T00:00:00Z"),
   });
@@ -34,14 +37,24 @@ describe("document session", () => {
     const doc = session(memoryStore().store);
     expect(doc.getSnapshot().status).toBe("loading");
     await doc.load();
-    expect(doc.getSnapshot()).toEqual({ markdown: "# Ejemplo", status: "saved" });
+    expect(doc.getSnapshot()).toEqual({
+      markdown: "# Ejemplo",
+      settings: DEFAULT_SETTINGS,
+      status: "saved",
+    });
   });
 
   it("loads the stored document", async () => {
-    const stored = { id: "doc", markdown: "guardado", updatedAt: "2025-01-01T00:00:00Z" };
+    const stored = {
+      id: "doc",
+      markdown: "guardado",
+      settings: templateSettings("thesis"),
+      updatedAt: "2025-01-01T00:00:00Z",
+    };
     const doc = session(memoryStore(stored).store);
     await doc.load();
     expect(doc.getSnapshot().markdown).toBe("guardado");
+    expect(doc.getSnapshot().settings.templateId).toBe("thesis");
   });
 
   it("saves once after the editing pause, with the latest content", async () => {
@@ -58,7 +71,12 @@ describe("document session", () => {
 
     await vi.advanceTimersByTimeAsync(1);
     expect(saved).toEqual([
-      { id: "doc", markdown: "ab", updatedAt: "2026-01-01T00:00:00.000Z" },
+      {
+        id: "doc",
+        markdown: "ab",
+        settings: DEFAULT_SETTINGS,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
     ]);
     expect(doc.getSnapshot().status).toBe("saved");
   });
@@ -93,6 +111,47 @@ describe("document session", () => {
     expect(saved.at(-1)?.markdown).toBe("x");
   });
 
+  it("saves a change of design like an edit, and ignores one that changes nothing", async () => {
+    const { store, saved } = memoryStore();
+    const doc = session(store);
+    await doc.load();
+
+    doc.setSettings({ ...DEFAULT_SETTINGS });
+    expect(doc.getSnapshot().status).toBe("saved");
+
+    const thesis = templateSettings("thesis");
+    doc.setSettings(thesis);
+    expect(doc.getSnapshot()).toMatchObject({ settings: thesis, status: "unsaved" });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(saved.at(-1)?.settings).toEqual(thesis);
+    expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("stays unsaved when something changes while a save is running", async () => {
+    let finish = () => {};
+    const saved: StoredDocument[] = [];
+    const slow: DocumentStore = {
+      load: async () => null,
+      save: (document) =>
+        new Promise((resolve) => {
+          finish = () => {
+            saved.push(document);
+            resolve();
+          };
+        }),
+    };
+    const doc = session(slow);
+    await doc.load();
+
+    doc.setMarkdown("primero");
+    const saving = doc.flush();
+    doc.setSettings(templateSettings("minimal"));
+    finish();
+    await saving;
+    expect(doc.getSnapshot().status).toBe("unsaved");
+    expect(saved[0]?.settings).toEqual(DEFAULT_SETTINGS);
+  });
+
   it("notifies subscribers and stops after unsubscribing", async () => {
     const doc = session(memoryStore().store);
     const listener = vi.fn();
@@ -112,6 +171,7 @@ describe("local document store", () => {
     const document = {
       id: "a",
       markdown: "# Hola",
+      settings: templateSettings("research-paper"),
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
     await store.save(document);
@@ -122,5 +182,32 @@ describe("local document store", () => {
     expect(await store.load("bad")).toBeNull();
     window.localStorage.setItem("texflow:document:odd", JSON.stringify({ id: 1 }));
     expect(await store.load("odd")).toBeNull();
+  });
+});
+
+describe("local document store with older or damaged designs", () => {
+  const store = createLocalDocumentStore(() => window.localStorage);
+  const save = (value: unknown) =>
+    window.localStorage.setItem("texflow:document:viejo", JSON.stringify(value));
+
+  it("opens a document saved before templates existed with the default design", async () => {
+    save({ id: "viejo", markdown: "# Texto", updatedAt: "2025-01-01T00:00:00Z" });
+    expect(await store.load("viejo")).toMatchObject({
+      markdown: "# Texto",
+      settings: DEFAULT_SETTINGS,
+    });
+  });
+
+  it("keeps the text when the stored design no longer validates", async () => {
+    save({
+      id: "viejo",
+      markdown: "# Texto",
+      updatedAt: "2025-01-01T00:00:00Z",
+      settings: { ...DEFAULT_SETTINGS, font: "comic-sans" },
+    });
+    expect(await store.load("viejo")).toMatchObject({
+      markdown: "# Texto",
+      settings: DEFAULT_SETTINGS,
+    });
   });
 });

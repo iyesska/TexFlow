@@ -1,21 +1,22 @@
 /*
  * The typeset document, as the quick preview shows it on the paper sheet.
  *
- * It follows the look of the LaTeX output so the preview reads as the same document:
- * a justified serif text block, booktabs-style tables, unshaded code. Sizes are in pt
- * and em so the whole sheet scales with the zoom. Page geometry comes from the
- * --page-* properties, which the document templates will set.
+ * It follows the LaTeX output so the preview reads as the same document: the same
+ * typeface, LaTeX's own type sizes and baseline, booktabs tables, numbered figures.
+ * The page, the face and the sizes come from the --page-* and --tex-* properties the
+ * document's template sets (src/features/templates/model/preview-style.ts). Sizes are
+ * in pt and em, so the whole sheet scales with the zoom.
  */
 
 .tf-document {
   color: var(--ink);
-  font-family: var(--font-family-serif);
-  font-size: var(--page-font-size, 11pt);
-  line-height: 1.42;
+  font-family: var(--page-font-family, var(--font-family-serif));
+  font-size: var(--page-font-size, 10.95pt);
+  line-height: var(--page-line-height, 1.242);
   text-align: justify;
   hyphens: auto;
   overflow-wrap: break-word;
-  font-variant-numeric: oldstyle-nums proportional-nums;
+  counter-reset: figure table;
 }
 
 .tf-document > :first-child {
@@ -26,33 +27,123 @@
   margin-bottom: 0;
 }
 
-/* Title block, as \maketitle sets it. */
+/* Title block, as \maketitle sets it above the text. */
 .tf-document .title-block {
-  margin-bottom: 2.4em;
+  margin-bottom: 2.2em;
+  line-height: 1.25;
   text-align: center;
+  hyphens: manual;
 }
 
 .tf-document .title-block .title {
-  margin: 0 0 0.9em;
-  font-size: 1.55em;
+  margin: 0 0 1.1em;
+  text-align: center;
+  font-size: var(--tex-LARGE, 17.28pt);
   font-weight: 400;
-  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.tf-document .title-block .subtitle {
+  margin: -0.6em 0 1.1em;
+  font-size: var(--tex-large, 12pt);
 }
 
 .tf-document .title-block .author,
 .tf-document .title-block .date {
-  margin: 0.25em 0;
-  font-size: 1.09em;
+  margin: 0.3em 0;
+  font-size: var(--tex-large, 12pt);
 }
 
-/* Sectioning. More space above a heading than below it. */
+/* A cover page: the title block alone on the first sheet, as titlepage sets it. */
+.tf-cover {
+  display: flex;
+  min-height: calc(
+    var(--page-height) - var(--page-margin-top) - var(--page-margin-bottom)
+  );
+  flex-direction: column;
+}
+
+.tf-cover .title-block {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+  padding-top: calc(
+    (var(--page-height) - var(--page-margin-top) - var(--page-margin-bottom)) * 0.22
+  );
+}
+
+.tf-cover .title-block .title {
+  margin-bottom: 1.6em;
+  font-size: var(--tex-Huge, 24.88pt);
+  font-weight: 700;
+}
+
+.tf-cover .title-block .author {
+  font-size: var(--tex-Large, 14.4pt);
+}
+
+.tf-cover .title-block .date {
+  margin-top: auto;
+}
+
+/* The abstract, as the article class sets it: smaller, indented, titled. */
+.tf-document .abstract {
+  margin: 0 2.5em 2em;
+  font-size: var(--tex-small, 10pt);
+}
+
+.tf-document .abstract-title {
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Table of contents. */
+.tf-document .toc {
+  margin: 0 0 2.2em;
+}
+
+.tf-document .toc .toc-title {
+  margin-top: 0;
+}
+
+.tf-document .toc ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.tf-document .toc ul ul {
+  padding-left: 1.6em;
+}
+
+.tf-document .toc li {
+  margin: 0.25em 0;
+}
+
+.tf-document .toc > ul > li > a {
+  font-weight: 700;
+}
+
+.tf-document .toc a {
+  text-decoration: none;
+}
+
+.tf-document .toc-section-number {
+  display: inline-block;
+  min-width: 2.2em;
+}
+
+/* Sectioning: \section is \Large, \subsection \large. More space above than below. */
 .tf-document h1,
 .tf-document h2,
 .tf-document h3,
 .tf-document h4,
 .tf-document h5,
 .tf-document h6 {
-  margin: 1.6em 0 0.65em;
+  margin: 1.6em 0 0.7em;
   font-weight: 700;
   line-height: 1.25;
   text-align: left;
@@ -62,11 +153,11 @@
 }
 
 .tf-document h1 {
-  font-size: 1.31em;
+  font-size: var(--tex-Large, 14.4pt);
 }
 
 .tf-document h2 {
-  font-size: 1.09em;
+  font-size: var(--tex-large, 12pt);
 }
 
 .tf-document h3,
@@ -82,8 +173,33 @@
   font-weight: 400;
 }
 
+.tf-document .header-section-number {
+  margin-right: 0.6em;
+}
+
+/* In a book, each top-level heading is a chapter: "Capítulo 1" above its title. */
+.tf-document[data-structure="book"] h1 {
+  margin: 2.6em 0 1.6em;
+  font-size: var(--tex-Huge, 24.88pt);
+}
+
+.tf-document[data-structure="book"] h1:first-child {
+  margin-top: 0;
+}
+
+.tf-document[data-structure="book"] h1 .header-section-number {
+  display: block;
+  margin: 0 0 0.8em;
+  font-size: calc(var(--tex-huge, 20.74pt) / var(--tex-Huge, 24.88pt) * 1em);
+}
+
+.tf-document[data-structure="book"] h1 .header-section-number::before {
+  content: var(--chapter-label, "Capítulo") " ";
+}
+
+/* Paragraphs: no indent, 6 pt between them, as Pandoc's LaTeX template sets. */
 .tf-document p {
-  margin: 0.55em 0;
+  margin: 6pt 0;
 }
 
 .tf-document a {
@@ -101,7 +217,7 @@
 /* Lists */
 .tf-document ul,
 .tf-document ol {
-  margin: 0.55em 0;
+  margin: 6pt 0;
   padding-left: 2em;
 }
 
@@ -148,7 +264,6 @@
   font-family: var(--font-family-mono);
   font-size: 0.82em;
   font-variant-ligatures: none;
-  font-variant-numeric: normal;
   hyphens: none;
 }
 
@@ -166,7 +281,7 @@
   border-collapse: collapse;
   border-top: 0.08em solid var(--ink);
   border-bottom: 0.08em solid var(--ink);
-  font-variant-numeric: lining-nums tabular-nums;
+  font-variant-numeric: tabular-nums;
   text-align: left;
   hyphens: manual;
 }
@@ -185,16 +300,24 @@
   border-bottom: 0.05em solid var(--ink);
 }
 
-.tf-document caption {
-  margin-bottom: 0.5em;
-  caption-side: top;
+/* The caption is lifted out of the table (see lift-table-captions.ts) so that, as in
+   LaTeX, it spans the text block rather than the table. */
+.tf-document .table-caption {
+  margin: 1.1em 0 0.5em;
+  text-align: center;
+  hyphens: manual;
+}
+
+.tf-document .table-caption::before {
+  content: var(--table-label, "Tabla") " " counter(table) ": ";
+  counter-increment: table;
+}
+
+.tf-document .table-caption + table {
+  margin-top: 0;
 }
 
 /* Figures are centred and numbered, as LaTeX floats are. */
-.tf-document {
-  counter-reset: figure;
-}
-
 .tf-document figure {
   margin: 1.2em 0;
   text-align: center;
@@ -212,7 +335,7 @@
 }
 
 .tf-document figcaption::before {
-  content: "Figura " counter(figure) ": ";
+  content: var(--figure-label, "Figura") " " counter(figure) ": ";
   counter-increment: figure;
 }
 
@@ -227,7 +350,6 @@
   color: var(--ink-muted);
   font-family: var(--font-family-sans);
   font-size: 0.8em;
-  font-variant-numeric: normal;
   line-height: 1.35;
   text-align: left;
   hyphens: manual;
@@ -252,7 +374,7 @@
 /* Footnotes collect at the end, under LaTeX's short rule. */
 .tf-document .footnotes {
   margin-top: 2.2em;
-  font-size: 0.86em;
+  font-size: var(--tex-small, 10pt);
 }
 
 .tf-document .footnotes hr {
@@ -270,13 +392,12 @@
 }
 
 .tf-document sup {
-  font-variant-numeric: lining-nums;
   line-height: 0;
 }
 
-/* Math. KaTeX's default 1.21em assumes a smaller text face than Libertinus. */
+/* Math. KaTeX's faces are Computer Modern; the scale levels them with the text face. */
 .tf-document .katex {
-  font-size: 1.08em;
+  font-size: calc(var(--page-math-scale, 1.08) * 1em);
 }
 
 .tf-document .math.display {

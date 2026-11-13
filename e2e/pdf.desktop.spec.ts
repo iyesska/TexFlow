@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
 test("compiles the document and shows the PDF", async ({ page }) => {
   await page.getByRole("radio", { name: "PDF" }).click();
   await expect(pdfPage(page, 1)).toBeVisible(compiled);
-  await expect(pageLabel(page)).toHaveText("1 de 1");
+  await expect(pageLabel(page)).toHaveText(/^1 de \d+$/);
   await expect(previewPane(page)).toContainText("PDF al día");
 
   // The canvas is really drawn on: it does not stay blank.

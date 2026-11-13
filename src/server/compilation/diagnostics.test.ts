@@ -60,6 +60,16 @@ describe("parseDiagnostics", () => {
     expect(error?.latexLine).toBeUndefined();
   });
 
+  it("tells a missing LaTeX file apart from a file the document asked for", () => {
+    const [error] = parseDiagnostics(
+      "error: article.cls:113: ! LaTeX Error: File `size11.clo' not found.",
+      "",
+      latex("x"),
+      "x",
+    );
+    expect(error?.message).toContain("«size11.clo», un archivo del propio LaTeX");
+  });
+
   it("does not blame a server file the document tried to read", () => {
     const [error] = parseDiagnostics(
       "error: main.tex:3: ! LaTeX Error: File `/etc/passwd.tex' not found.",

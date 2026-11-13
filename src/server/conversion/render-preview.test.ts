@@ -1,18 +1,26 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
+
 import { renderPreviewHtml } from "./render-preview";
 
 async function html(markdown: string): Promise<string> {
-  const result = await renderPreviewHtml({ markdown }, "pandoc");
+  const result = await renderPreviewHtml(
+    { markdown, settings: DEFAULT_SETTINGS },
+    "pandoc",
+  );
   if (!result.ok) throw new Error(`Preview failed: ${result.error.message}`);
   return result.html;
 }
 
 describe("preview HTML", () => {
   it("renders headings with prefixed, readable ids", async () => {
-    expect(await html("# Introducción")).toContain(
-      '<h1 id="pv-introduccion">Introducción</h1>',
+    // The default template numbers sections: the number comes first, in its own span.
+    const output = await html("# Introducción");
+    expect(output).toContain('id="pv-introduccion"');
+    expect(output).toContain(
+      '<span class="header-section-number">1</span> Introducción</h1>',
     );
   });
 
@@ -65,14 +73,42 @@ describe("preview HTML", () => {
 
   it("reports no warnings for an ordinary document, with or without a title", async () => {
     for (const markdown of ["---\ntitle: T\n---\n\nx", "# Sin metadatos\n\nx"]) {
-      const result = await renderPreviewHtml({ markdown }, "pandoc");
+      const result = await renderPreviewHtml(
+        { markdown, settings: DEFAULT_SETTINGS },
+        "pandoc",
+      );
       expect(result).toMatchObject({ ok: true, warnings: [] });
     }
   });
 
+  it("numbers sections, adds a table of contents and an abstract, in the document's language", async () => {
+    const markdown = "---\ntitle: T\nabstract: Breve.\n---\n\n# Uno\n\n## Dos";
+    const result = await renderPreviewHtml(
+      {
+        markdown,
+        settings: { ...DEFAULT_SETTINGS, numberSections: true, tableOfContents: true },
+      },
+      "pandoc",
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.html).toContain('<span class="header-section-number">1.1</span>');
+    expect(result.html).toContain('<nav class="toc" role="doc-toc">');
+    expect(result.html).toContain('<h2 class="toc-title">Índice</h2>');
+    expect(result.html).toContain('<p class="abstract-title">Resumen</p>');
+
+    const english = await renderPreviewHtml(
+      {
+        markdown,
+        settings: { ...DEFAULT_SETTINGS, tableOfContents: true, language: "en" },
+      },
+      "pandoc",
+    );
+    expect(english.ok && english.html).toContain('<h2 class="toc-title">Contents</h2>');
+  });
+
   it("reports a YAML error like the LaTeX conversion does", async () => {
     const result = await renderPreviewHtml(
-      { markdown: "---\ntitle: [a\n---\n" },
+      { markdown: "---\ntitle: [a\n---\n", settings: DEFAULT_SETTINGS },
       "pandoc",
     );
     expect(result).toMatchObject({ ok: false, error: { code: "syntax", line: 2 } });

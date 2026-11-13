@@ -5,13 +5,19 @@ import { CONVERSION_ERROR_CODES } from "./conversion";
 /**
  * The contract of POST /api/compile.
  *
- * Request: multipart/form-data with one `markdown` field and one `image` file per
- * image the document uses, named as the Markdown refers to it.
+ * Request: multipart/form-data with one `markdown` field, an optional `settings` field
+ * (the design settings as JSON) and one `image` file per image the document uses,
+ * named as the Markdown refers to it.
  * Success: the PDF itself (application/pdf), with any warnings in a header.
  * Failure: JSON matching `compileFailureSchema`.
  */
 
-export const COMPILE_FIELDS = { markdown: "markdown", image: "image" } as const;
+export const COMPILE_FIELDS = {
+  markdown: "markdown",
+  image: "image",
+  /** The design settings as JSON. Optional: the default template otherwise. */
+  settings: "settings",
+} as const;
 
 /** Carries the warnings of a successful compile: URI-encoded JSON of diagnostics. */
 export const COMPILE_WARNINGS_HEADER = "X-Texflow-Warnings";

@@ -60,6 +60,12 @@ const ERRORS: readonly (readonly [RegExp, Explain])[] = [
     }),
   ],
   [
+    /File `([^']+\.(?:clo|cfg|def|fd|ldf|ini|tfm|otf|ttf))' not found/,
+    ([, file = ""]) => ({
+      message: `Falta «${file}», un archivo del propio LaTeX, en este servidor. Quien lo administra puede instalarlo con scripts/setup-tectonic.sh.`,
+    }),
+  ],
+  [
     /File `([^']+)' not found/,
     ([, file = ""]) => ({
       message: `No se encontró el archivo «${file}». Un documento solo puede usar sus propias imágenes.`,

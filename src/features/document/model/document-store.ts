@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
+import { documentSettingsSchema } from "@/templates/settings";
+
 import type { StoredDocument } from "./document";
 
 /**
@@ -15,6 +18,8 @@ const storedDocumentSchema = z.object({
   id: z.string().min(1),
   markdown: z.string(),
   updatedAt: z.string(),
+  // Checked on its own below: settings that no longer validate must not cost the text.
+  settings: z.unknown().optional(),
 });
 
 const storageKey = (id: string) => `texflow:document:${id}`;
@@ -35,7 +40,16 @@ export function createLocalDocumentStore(getStorage: () => Storage): DocumentSto
         return null;
       }
       const result = storedDocumentSchema.safeParse(json);
-      return result.success ? result.data : null;
+      if (!result.success) return null;
+      // Documents saved before templates existed, or with settings from a newer
+      // version, open with the default design.
+      const settings = documentSettingsSchema.safeParse(result.data.settings);
+      return {
+        id: result.data.id,
+        markdown: result.data.markdown,
+        updatedAt: result.data.updatedAt,
+        settings: settings.success ? settings.data : DEFAULT_SETTINGS,
+      };
     },
     async save(document) {
       // Throws when the quota is exceeded; the session reports that as a failed save.

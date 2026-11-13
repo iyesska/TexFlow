@@ -6,6 +6,7 @@ import { env } from "@/config/env";
 import { site } from "@/config/site";
 import { cn } from "@/lib/utils";
 
+import { documentFontVariables } from "./document-fonts";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         mono.variable,
         wordmark.variable,
         documentSerif.variable,
+        documentFontVariables,
       )}
       suppressHydrationWarning
     >
