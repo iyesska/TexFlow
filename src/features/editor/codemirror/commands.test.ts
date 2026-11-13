@@ -5,6 +5,7 @@ import {
   BLOCK_TEMPLATES,
   insertBlock,
   insertLink,
+  insertParagraph,
   toggleBlockquote,
   toggleBold,
   toggleBulletList,
@@ -108,5 +109,16 @@ describe("insertions", () => {
     expect(result.replace(/[[\]]/g, "")).toBe(
       "| Columna 1 | Columna 2 |\n| --- | --- |\n| Celda | Celda |\n| Celda | Celda |",
     );
+  });
+
+  it("inserts a paragraph on a blank line, or after the current one", () => {
+    expect(run(insertParagraph("![a](a.png)"), "|")).toBe("![a](a.png)|");
+    expect(run(insertParagraph("![a](a.png)"), "Tex|to\nmás")).toBe(
+      "Texto\n\n![a](a.png)|\nmás",
+    );
+  });
+
+  it("inserts at a given position instead of the cursor", () => {
+    expect(run(insertParagraph("X", 0), "uno\ndo|s")).toBe("uno\n\nX|\ndos");
   });
 });

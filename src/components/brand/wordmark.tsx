@@ -11,7 +11,7 @@ export function Wordmark({ className }: { className?: string }) {
       role="img"
       aria-label={site.name}
       className={cn(
-        "inline-flex items-baseline font-serif text-[1.25rem] leading-none font-semibold text-foreground select-none",
+        "inline-flex items-baseline font-display text-[1.25rem] leading-none font-semibold text-foreground select-none",
         className,
       )}
     >

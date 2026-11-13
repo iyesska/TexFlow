@@ -1,0 +1,10 @@
+$if(title)$
+<header class="title-block">
+  <h1 class="title">$title$</h1>
+  $for(author)$
+  <p class="author">$author$</p>
+  $endfor$ $if(date)$
+  <p class="date">$date$</p>
+  $endif$
+</header>
+$endif$ $body$

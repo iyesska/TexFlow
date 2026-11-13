@@ -22,7 +22,16 @@ const mono = JetBrains_Mono({
 });
 
 // Libertinus is self-hosted: Next ships no fallback metrics for it on Google Fonts.
-const serif = localFont({
+// The wordmark's single weight is preloaded; the document's faces load when the
+// preview first needs them.
+const wordmark = localFont({
+  src: "./fonts/libertinus-serif-latin-600-normal.woff2",
+  weight: "600",
+  variable: "--font-libertinus-display",
+  display: "swap",
+});
+
+const documentSerif = localFont({
   src: [
     {
       path: "./fonts/libertinus-serif-latin-400-normal.woff2",
@@ -30,13 +39,24 @@ const serif = localFont({
       style: "normal",
     },
     {
-      path: "./fonts/libertinus-serif-latin-600-normal.woff2",
-      weight: "600",
+      path: "./fonts/libertinus-serif-latin-400-italic.woff2",
+      weight: "400",
+      style: "italic",
+    },
+    {
+      path: "./fonts/libertinus-serif-latin-700-normal.woff2",
+      weight: "700",
       style: "normal",
+    },
+    {
+      path: "./fonts/libertinus-serif-latin-700-italic.woff2",
+      weight: "700",
+      style: "italic",
     },
   ],
   variable: "--font-libertinus-serif",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -62,7 +82,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={cn(sans.variable, mono.variable, serif.variable)}
+      className={cn(
+        sans.variable,
+        mono.variable,
+        wordmark.variable,
+        documentSerif.variable,
+      )}
       suppressHydrationWarning
     >
       <body>

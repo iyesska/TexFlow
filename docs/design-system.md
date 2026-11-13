@@ -61,10 +61,22 @@ destaque sobre la notación.
 | Documento | Libertinus Serif | `font-serif` |
 
 Libertinus es una de las fuentes clásicas del mundo LaTeX; también dibuja el logotipo,
-con la E caída del logo de TeX.
+con la E caída del logo de TeX. El logotipo precarga su único peso; las cuatro
+variantes del documento (redonda, cursiva, negrita y negrita cursiva) se cargan cuando la
+vista previa las necesita.
 
 Escala fija en rem: `text-2xs` (11 px), `text-xs` (12 px), `text-ui` (13 px, el tamaño
 base de la interfaz) y `text-sm` (14 px).
+
+### El documento
+
+`src/styles/document.css` da estilo al documento de la vista previa (clase
+`tf-document`). Imita el resultado en LaTeX para que ambas cosas se lean como el mismo
+documento: bloque de texto justificado en serif, tablas de tres líneas sin filetes
+verticales, código sin fondo, figuras numeradas y notas al pie bajo un filete corto. Usa
+los tokens `ink`, `ink-muted`, `paper-rule` y `paper-error`, y medidas en `pt` y `em` para
+escalar con el zoom. La geometría de página sale de las propiedades `--page-*`, que
+fijarán las plantillas.
 
 ### Forma y profundidad
 
@@ -75,17 +87,18 @@ base de la interfaz) y `text-sm` (14 px).
 
 ## Componentes propios
 
-| Componente        | Ubicación                              | Uso                                 |
-| ----------------- | -------------------------------------- | ----------------------------------- |
-| `Wordmark`        | `src/components/brand`                 | Logotipo                            |
-| `ShortcutKeys`    | `src/components`                       | Muestra un atajo como teclas        |
-| `FullPageMessage` | `src/components/feedback`              | Error y 404                         |
-| `PaneFrame`       | `src/features/workspace/components`    | Marco común de los paneles          |
-| `PaneEmptyState`  | `src/features/workspace/components`    | Estado vacío de un panel            |
-| `PaperSheet`      | `src/features/preview/components`      | La hoja A4 de la vista previa       |
-| `SaveIndicator`   | `src/features/document/components`     | Estado de guardado del documento    |
-| `EditorToolbar`   | `src/features/editor/components`       | Controles de formato del editor     |
-| `ConversionAlert` | `src/features/latex-output/components` | Error de conversión sobre el código |
+| Componente            | Ubicación                            | Uso                                           |
+| --------------------- | ------------------------------------ | --------------------------------------------- |
+| `Wordmark`            | `src/components/brand`               | Logotipo                                      |
+| `ShortcutKeys`        | `src/components`                     | Muestra un atajo como teclas                  |
+| `FullPageMessage`     | `src/components/feedback`            | Error y 404                                   |
+| `PaneFrame`           | `src/features/workspace/components`  | Marco común de los paneles                    |
+| `PaperSheet`          | `src/features/preview/components`    | La hoja A4 de la vista previa                 |
+| `SaveIndicator`       | `src/features/document/components`   | Estado de guardado del documento              |
+| `EditorToolbar`       | `src/features/editor/components`     | Controles de formato del editor               |
+| `ConversionAlert`     | `src/features/conversion/components` | Error de conversión sobre el último resultado |
+| `ConversionStatusBar` | `src/features/conversion/components` | Pie de un panel que alimenta el servidor      |
+| `DocumentSheet`       | `src/features/preview/components`    | El documento compuesto sobre la hoja          |
 
 ## Reglas
 

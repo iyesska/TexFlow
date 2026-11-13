@@ -3,8 +3,8 @@ import { z } from "zod";
 import { LIMITS } from "@/config/limits";
 
 /**
- * The contract of POST /api/convert, shared by the route handler and the client so
- * both sides validate the same shapes.
+ * The contracts of POST /api/convert and POST /api/preview, shared by the route
+ * handlers and the client so both sides validate the same shapes.
  */
 
 export const convertRequestSchema = z.object({
@@ -48,3 +48,33 @@ export const convertResponseSchema = z.discriminatedUnion("ok", [
 ]);
 
 export type ConvertResponse = z.infer<typeof convertResponseSchema>;
+
+/** A failed conversion, whichever endpoint it came from. */
+export interface ConversionFailure {
+  readonly ok: false;
+  readonly error: ConversionError;
+}
+
+/** Prefix of every element id in the preview, so none collides with the app's own. */
+export const PREVIEW_ID_PREFIX = "pv-";
+
+export const previewRequestSchema = z.object({
+  markdown: z.string().max(LIMITS.maxMarkdownLength),
+});
+
+export type PreviewRequest = z.infer<typeof previewRequestSchema>;
+
+export const previewResponseSchema = z.discriminatedUnion("ok", [
+  z.object({
+    ok: z.literal(true),
+    /**
+     * An HTML fragment as Pandoc wrote it. It is NOT safe to insert as is: the
+     * client sanitizes it before it reaches the page.
+     */
+    html: z.string(),
+    warnings: z.array(z.string()),
+  }),
+  z.object({ ok: z.literal(false), error: conversionErrorSchema }),
+]);
+
+export type PreviewResponse = z.infer<typeof previewResponseSchema>;

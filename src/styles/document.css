@@ -1,0 +1,292 @@
+/*
+ * The typeset document, as the quick preview shows it on the paper sheet.
+ *
+ * It follows the look of the LaTeX output so the preview reads as the same document:
+ * a justified serif text block, booktabs-style tables, unshaded code. Sizes are in pt
+ * and em so the whole sheet scales with the zoom. Page geometry comes from the
+ * --page-* properties, which the document templates will set.
+ */
+
+.tf-document {
+  color: var(--ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--page-font-size, 11pt);
+  line-height: 1.42;
+  text-align: justify;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+
+.tf-document > :first-child {
+  margin-top: 0;
+}
+
+.tf-document > :last-child {
+  margin-bottom: 0;
+}
+
+/* Title block, as \maketitle sets it. */
+.tf-document .title-block {
+  margin-bottom: 2.4em;
+  text-align: center;
+}
+
+.tf-document .title-block .title {
+  margin: 0 0 0.9em;
+  font-size: 1.55em;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.tf-document .title-block .author,
+.tf-document .title-block .date {
+  margin: 0.25em 0;
+  font-size: 1.09em;
+}
+
+/* Sectioning. More space above a heading than below it. */
+.tf-document h1,
+.tf-document h2,
+.tf-document h3,
+.tf-document h4,
+.tf-document h5,
+.tf-document h6 {
+  margin: 1.6em 0 0.65em;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  hyphens: manual;
+  text-wrap: balance;
+  break-after: avoid;
+}
+
+.tf-document h1 {
+  font-size: 1.31em;
+}
+
+.tf-document h2 {
+  font-size: 1.09em;
+}
+
+.tf-document h3,
+.tf-document h4,
+.tf-document h5,
+.tf-document h6 {
+  font-size: 1em;
+}
+
+.tf-document h5,
+.tf-document h6 {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.tf-document p {
+  margin: 0.55em 0;
+}
+
+.tf-document a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--paper-rule);
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.18em;
+}
+
+.tf-document a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Lists */
+.tf-document ul,
+.tf-document ol {
+  margin: 0.55em 0;
+  padding-left: 2em;
+}
+
+.tf-document ul {
+  list-style: disc;
+}
+
+.tf-document ul ul {
+  list-style: "– ";
+}
+
+.tf-document ol {
+  list-style: decimal;
+}
+
+.tf-document li > p {
+  margin: 0.25em 0;
+}
+
+.tf-document ul.task-list {
+  padding-left: 0.4em;
+  list-style: none;
+}
+
+.tf-document ul.task-list input {
+  margin-right: 0.5em;
+  accent-color: var(--ink);
+}
+
+.tf-document dt {
+  font-weight: 700;
+}
+
+.tf-document dd {
+  margin: 0 0 0.5em 2em;
+}
+
+.tf-document blockquote {
+  margin: 0.9em 2em;
+}
+
+/* Code is set as LaTeX's verbatim: monospaced, unshaded. */
+.tf-document code {
+  font-family: var(--font-family-mono);
+  font-size: 0.82em;
+  font-variant-ligatures: none;
+  font-variant-numeric: normal;
+  hyphens: none;
+}
+
+.tf-document pre {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre;
+}
+
+/* Tables follow booktabs: three horizontal rules and no vertical ones. */
+.tf-document table {
+  margin: 1.1em auto;
+  border-collapse: collapse;
+  border-top: 0.08em solid var(--ink);
+  border-bottom: 0.08em solid var(--ink);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document th,
+.tf-document td {
+  padding: 0.28em 0.75em;
+  vertical-align: top;
+}
+
+.tf-document th {
+  font-weight: 400;
+}
+
+.tf-document thead tr:last-child > * {
+  border-bottom: 0.05em solid var(--ink);
+}
+
+.tf-document caption {
+  margin-bottom: 0.5em;
+  caption-side: top;
+}
+
+/* Figures are centred and numbered, as LaTeX floats are. */
+.tf-document {
+  counter-reset: figure;
+}
+
+.tf-document figure {
+  margin: 1.2em 0;
+  text-align: center;
+}
+
+.tf-document img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+}
+
+.tf-document figcaption {
+  margin-top: 0.6em;
+  hyphens: manual;
+}
+
+.tf-document figcaption::before {
+  content: "Figura " counter(figure) ": ";
+  counter-increment: figure;
+}
+
+.tf-document .missing-image {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.9em 1.2em;
+  border: 0.06em dashed var(--ink-muted);
+  border-radius: 0.25em;
+  color: var(--ink-muted);
+  font-family: var(--font-family-sans);
+  font-size: 0.8em;
+  font-variant-numeric: normal;
+  line-height: 1.35;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document .missing-image strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.tf-document .missing-image code {
+  overflow-wrap: anywhere;
+}
+
+.tf-document hr {
+  width: 50%;
+  margin: 1.4em auto;
+  border: 0;
+  border-top: 0.05em solid var(--ink);
+}
+
+/* Footnotes collect at the end, under LaTeX's short rule. */
+.tf-document .footnotes {
+  margin-top: 2.2em;
+  font-size: 0.86em;
+}
+
+.tf-document .footnotes hr {
+  width: 28%;
+  margin: 0 0 0.7em;
+}
+
+.tf-document .footnotes ol {
+  padding-left: 1.6em;
+}
+
+.tf-document .footnote-ref,
+.tf-document .footnote-back {
+  text-decoration: none;
+}
+
+.tf-document sup {
+  font-variant-numeric: lining-nums;
+  line-height: 0;
+}
+
+/* Math. KaTeX's default 1.21em assumes a smaller text face than Libertinus. */
+.tf-document .katex {
+  font-size: 1.08em;
+}
+
+.tf-document .math.display {
+  display: block;
+  margin: 0.9em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.tf-document .katex-display {
+  margin: 0;
+}

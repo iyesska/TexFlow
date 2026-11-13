@@ -102,10 +102,13 @@
   --paper: oklch(0.987 0.003 95);
   --ink: oklch(0.2 0.01 260);
   --ink-muted: oklch(0.48 0.01 260);
+  --paper-rule: oklch(0.2 0.01 260 / 0.22);
+  --paper-error: oklch(0.5 0.19 27);
 
   --font-family-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-family-mono:
     var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-family-display: var(--font-libertinus-display), var(--font-family-serif);
   --font-family-serif:
     var(--font-libertinus-serif), "Iowan Old Style", "Palatino Linotype", serif;
 
@@ -132,6 +135,7 @@
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
   --font-serif: var(--font-family-serif);
+  --font-display: var(--font-family-display);
   --font-heading: var(--font-sans);
 
   /* Product type scale: fixed rem steps at a tight ratio. */
@@ -164,6 +168,8 @@
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-error: var(--paper-error);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

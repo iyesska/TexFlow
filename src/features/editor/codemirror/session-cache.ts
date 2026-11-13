@@ -23,6 +23,7 @@ export function createEditorSessionCache(): EditorSessionCache {
   const relay: EditorListeners = {
     onDocChange: (markdown) => connected?.onDocChange(markdown),
     onCursorChange: (cursor) => connected?.onCursorChange(cursor),
+    onImageFiles: (files, position) => connected?.onImageFiles(files, position),
   };
 
   return {

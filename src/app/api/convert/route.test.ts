@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { convertResponseSchema } from "@/contracts/convert";
+import { convertResponseSchema } from "@/contracts/conversion";
 import { LIMITS } from "@/config/limits";
 
 import { POST } from "./route";

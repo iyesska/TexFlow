@@ -41,6 +41,15 @@ export interface CursorPosition {
 export interface EditorListeners {
   onDocChange(markdown: string): void;
   onCursorChange(cursor: CursorPosition): void;
+  /**
+   * Image files were pasted or dropped. `position` is where they were dropped, or
+   * null to use the cursor.
+   */
+  onImageFiles(files: File[], position: number | null): void;
+}
+
+function imageFiles(data: DataTransfer | null): File[] {
+  return Array.from(data?.files ?? []).filter((file) => file.type.startsWith("image/"));
 }
 
 export function cursorPosition(state: EditorState): CursorPosition {
@@ -95,6 +104,25 @@ export function markdownEditorExtensions(listeners: EditorListeners): Extension 
       ...completionKeymap,
       indentWithTab,
     ]),
+
+    // Pasted or dropped images are added to the document instead of being ignored.
+    EditorView.domEventHandlers({
+      paste(event) {
+        const files = imageFiles(event.clipboardData);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        listeners.onImageFiles(files, null);
+        return true;
+      },
+      drop(event, view) {
+        const files = imageFiles(event.dataTransfer);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        listeners.onImageFiles(files, position);
+        return true;
+      },
+    }),
 
     EditorView.updateListener.of((update) => {
       if (update.docChanged) listeners.onDocChange(update.state.doc.toString());

@@ -1,5 +1,6 @@
 "use client";
 
+import { AssetLibraryProvider } from "@/features/assets/hooks/use-assets";
 import { DocumentShortcuts } from "@/features/document/components/document-shortcuts";
 import { DocumentProvider } from "@/features/document/hooks/use-document";
 import { EditorSessionCacheProvider } from "@/features/editor/hooks/use-editor-session-cache";
@@ -36,9 +37,11 @@ export function Workspace({ initialLayout }: { initialLayout: WorkspaceLayout })
   return (
     <WorkspaceLayoutProvider initialLayout={initialLayout}>
       <DocumentProvider>
-        <EditorSessionCacheProvider>
-          <WorkspaceShell />
-        </EditorSessionCacheProvider>
+        <AssetLibraryProvider>
+          <EditorSessionCacheProvider>
+            <WorkspaceShell />
+          </EditorSessionCacheProvider>
+        </AssetLibraryProvider>
       </DocumentProvider>
     </WorkspaceLayoutProvider>
   );

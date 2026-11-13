@@ -3,19 +3,20 @@
 import { TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { ConversionError, ConversionErrorCode } from "@/contracts/convert";
+import type { ConversionError, ConversionErrorCode } from "@/contracts/conversion";
 
 /** Errors the writer fixes in the document; retrying the same text cannot help. */
 const NOT_RETRYABLE: ReadonlySet<ConversionErrorCode> = new Set(["syntax", "too-large"]);
 
-/** Explains a failed conversion above the last LaTeX that did convert. */
+/** Explains a failed conversion above the last result that did convert. */
 export function ConversionAlert({
   error,
-  hasPreviousOutput,
+  staleNote,
   onRetry,
 }: {
   error: ConversionError;
-  hasPreviousOutput: boolean;
+  /** Says that what is on screen is an older result; omit when nothing is shown. */
+  staleNote?: string;
   onRetry: () => void;
 }) {
   return (
@@ -39,10 +40,8 @@ export function ConversionAlert({
               {error.detail}
             </pre>
           ) : null}
-          {hasPreviousOutput ? (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Se muestra el último código que se pudo generar.
-            </p>
+          {staleNote ? (
+            <p className="mt-1.5 text-xs text-muted-foreground">{staleNote}</p>
           ) : null}
         </div>
         {NOT_RETRYABLE.has(error.code) ? null : (

@@ -182,3 +182,25 @@ export function insertBlock(template: string): StateCommand {
     return true;
   };
 }
+
+/**
+ * Inserts `text` as a paragraph of its own: on the line at `at` (or at the cursor) if
+ * that line is blank, otherwise after it. Leaves the cursor at the end of the text.
+ */
+export function insertParagraph(text: string, at?: number | null): StateCommand {
+  return ({ state, dispatch }) => {
+    const line = state.doc.lineAt(at ?? state.selection.main.head);
+    const isBlank = line.text.trim() === "";
+    const from = isBlank ? line.from : line.to;
+    const insert = (isBlank ? "" : "\n\n") + text;
+    dispatch(
+      state.update({
+        changes: { from, to: line.to, insert },
+        selection: EditorSelection.cursor(from + insert.length),
+        scrollIntoView: true,
+        userEvent: "input.paste",
+      }),
+    );
+    return true;
+  };
+}

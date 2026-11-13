@@ -5,4 +5,9 @@
 export const LIMITS = {
   /** Longest Markdown document that can be converted, in characters. */
   maxMarkdownLength: 500_000,
+  /**
+   * Largest request body carrying a document. UTF-8 uses at most four bytes per
+   * character; the rest is room for the JSON envelope.
+   */
+  maxDocumentBodyBytes: 500_000 * 4 + 1024,
 } as const;

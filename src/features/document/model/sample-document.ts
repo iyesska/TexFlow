@@ -41,7 +41,7 @@ def fibonacci(n: int) -> int:
 
 ## Imágenes y notas
 
-![Diagrama del experimento](figuras/diagrama.png)
+Para añadir una imagen PNG o JPEG, usa el botón de la barra de herramientas, pégala o arrástrala al editor.
 
 Las notas al pie se escriben así[^1].
 

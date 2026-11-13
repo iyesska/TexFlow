@@ -11,6 +11,7 @@ interface MarkdownEditorProps {
   readonly initialMarkdown: string;
   readonly onDocChange: (markdown: string) => void;
   readonly onCursorChange: (cursor: CursorPosition) => void;
+  readonly onImageFiles: (files: File[], position: number | null) => void;
   /** Receives the view once it exists, and `null` when it is destroyed. */
   readonly onViewChange: (view: EditorView | null) => void;
 }
@@ -20,6 +21,7 @@ export function MarkdownEditor({
   initialMarkdown,
   onDocChange,
   onCursorChange,
+  onImageFiles,
   onViewChange,
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -27,6 +29,7 @@ export function MarkdownEditor({
 
   const handleDocChange = useEffectEvent(onDocChange);
   const handleCursorChange = useEffectEvent(onCursorChange);
+  const handleImageFiles = useEffectEvent(onImageFiles);
   const handleViewChange = useEffectEvent(onViewChange);
   const initialState = useEffectEvent(() => cache.stateFor(initialMarkdown));
 
@@ -37,6 +40,7 @@ export function MarkdownEditor({
     const disconnect = cache.connect({
       onDocChange: handleDocChange,
       onCursorChange: handleCursorChange,
+      onImageFiles: handleImageFiles,
     });
     const view = new EditorView({ state: initialState(), parent: host });
     handleCursorChange(cursorPosition(view.state));

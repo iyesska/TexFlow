@@ -20,7 +20,7 @@ import {
   TextQuote,
   type LucideIcon,
 } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useRef } from "react";
 
 import { ShortcutKeys } from "@/components/shortcut-keys";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SHORTCUTS } from "@/config/shortcuts";
+import { ASSET_TYPES } from "@/features/assets/model/asset";
 import type { KeyCombo } from "@/lib/keyboard";
 
 import {
@@ -108,7 +109,6 @@ const GROUPS: readonly (readonly ToolbarAction[])[] = [
       icon: Sigma,
       command: insertBlock(BLOCK_TEMPLATES.mathBlock),
     },
-    { label: "Imagen", icon: ImageIcon, command: insertBlock(BLOCK_TEMPLATES.image) },
   ],
 ];
 
@@ -184,8 +184,62 @@ function HeadingMenu({
   );
 }
 
+const ACCEPTED_IMAGES = Object.keys(ASSET_TYPES).join(",");
+
+/** Opens the file picker; the chosen images are added to the document. */
+function ImageButton({
+  disabled,
+  onPicked,
+}: {
+  disabled: boolean;
+  onPicked: (files: File[]) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Imagen"
+            disabled={disabled}
+            onMouseDown={keepEditorFocus}
+            onClick={() => inputRef.current?.click()}
+            className="shrink-0 text-muted-foreground"
+          >
+            <ImageIcon />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Añadir una imagen PNG o JPEG
+        </TooltipContent>
+      </Tooltip>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED_IMAGES}
+        multiple
+        hidden
+        aria-label="Elegir imágenes"
+        onChange={(event) => {
+          onPicked(Array.from(event.target.files ?? []));
+          // Lets the same file be picked again later.
+          event.target.value = "";
+        }}
+      />
+    </>
+  );
+}
+
 /** Formatting controls for people who would rather click than remember Markdown. */
-export function EditorToolbar({ view }: { view: EditorView | null }) {
+export function EditorToolbar({
+  view,
+  onImagesPicked,
+}: {
+  view: EditorView | null;
+  onImagesPicked: (files: File[]) => void;
+}) {
   const run = (command: StateCommand) => {
     if (!view) return;
     command(view);
@@ -215,6 +269,7 @@ export function EditorToolbar({ view }: { view: EditorView | null }) {
           ))}
         </Fragment>
       ))}
+      <ImageButton disabled={disabled} onPicked={onImagesPicked} />
     </div>
   );
 }

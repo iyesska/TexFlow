@@ -91,8 +91,47 @@ POST /api/convert ──► readJsonBody (corta al exceder el tamaño)
 - **Visor.** El panel aplica solo el cambio mínimo entre el LaTeX anterior y el nuevo, de
   modo que el desplazamiento y la selección no saltan al escribir.
 
-La vista previa (fase 4) y la compilación (fase 5) seguirán el mismo patrón: contrato,
-ruta delgada, servicio y `runProcess`.
+## Vista previa (fase 4)
+
+```
+POST /api/preview ──► pandoc (HTML, filtro strip-raw, plantilla de título)
+        │
+        ▼  HTML no confiable
+sanitizePreviewHtml (DOMPurify) ──► typesetMath (KaTeX) ──► resolveImages ──► patchChildren
+```
+
+- **Servidor.** `render-preview.ts` usa el mismo `runPandoc` que la conversión a LaTeX,
+  con otra lista de opciones. Un filtro Lua propio (`pandoc/filters/strip-raw.lua`)
+  elimina el HTML y el TeX en bruto, y una plantilla propia añade el bloque de título.
+  Ambos son archivos nuestros, de confianza; el contenido del usuario nunca forma una
+  ruta.
+- **Frontera de confianza.** El HTML que devuelve el servidor todavía contiene lo que
+  eligió el autor: destinos de enlaces, atributos, estilos. `sanitize.ts` lo pasa por
+  DOMPurify con una lista cerrada de etiquetas y atributos, solo admite `http`, `https`,
+  `mailto` y rutas relativas, reduce los estilos a alineación y anchos, y descarta los
+  `id` que no llevan el prefijo de la vista previa. Se sanea en el cliente, con el
+  analizador del propio navegador y justo antes de insertar.
+- **Fórmulas.** Pandoc deja el TeX como texto; KaTeX lo compone en el navegador con
+  `trust: false` y límites de expansión y tamaño, y entrega nodos del DOM, no una cadena
+  HTML: en ningún momento se interpreta como HTML un texto del documento. Así el coste de componer recae en
+  quien escribe el documento, no en el servidor, y las fórmulas ya compuestas se
+  recuerdan.
+- **Imágenes.** Solo se muestran las del propio documento, resueltas por nombre desde la
+  biblioteca de imágenes. Las remotas se sustituyen por una nota y nunca se piden.
+- **Actualización mínima.** `patchChildren` conserva los bloques que no cambian, de modo
+  que escribir en un párrafo no recarga imágenes ni recompone fórmulas del resto.
+
+### Imágenes del documento
+
+`src/features/assets` sigue el mismo esquema que el documento: una interfaz `AssetStore`
+(hoy IndexedDB, la API en la fase 7) y una `AssetLibrary` sin React que carga las
+imágenes una vez y las mantiene en memoria. Al añadir una imagen se comprueba su tamaño,
+se identifica su tipo por los primeros bytes del archivo (no por la extensión ni por el
+tipo declarado) y se le da un nombre seguro y único. Solo se admiten PNG y JPEG, los
+formatos que LaTeX puede incluir.
+
+La compilación (fase 5) seguirá el patrón de las conversiones: contrato, ruta delgada,
+servicio y `runProcess`.
 
 ## Modelo de seguridad
 
@@ -117,6 +156,14 @@ En vigor desde la fase 3:
 - **`pandoc --sandbox`.** Pandoc no puede leer archivos ni acceder a la red.
 - **Cabeceras de seguridad** (`X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`) en `next.config.ts`.
+
+En vigor desde la fase 4:
+
+- **HTML saneado en el cliente** antes de mostrarse (véase la vista previa).
+- **Sin HTML en bruto.** El filtro de Pandoc lo elimina; `<script>` nunca llega al
+  navegador.
+- **Sin peticiones a terceros.** Las imágenes remotas no se cargan.
+- **Imágenes validadas por contenido**, con límite de 5 MB por imagen y 50 por documento.
 
 El LaTeX escrito a mano dentro del Markdown (por ejemplo `\input{...}`) se conserva en la
 salida: es texto y convertirlo no ejecuta nada. Su riesgo aparece al compilar, y ahí se
@@ -143,19 +190,24 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
 
 ## Decisiones tomadas
 
-| Decisión                                                 | Motivo                                                              |
-| -------------------------------------------------------- | ------------------------------------------------------------------- |
-| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.   |
-| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                  |
-| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.   |
-| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`. |
-| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.          |
-| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.    |
-| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                |
-| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.      |
-| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.          |
-| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.           |
-| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.   |
+| Decisión                                                 | Motivo                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.          |
+| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                         |
+| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.          |
+| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`.        |
+| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.                 |
+| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.           |
+| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                       |
+| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.             |
+| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.                 |
+| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.                  |
+| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.          |
+| KaTeX en el cliente, no en el servidor                   | Componer fórmulas es trabajo de CPU sin aislar; que lo haga quien escribe. |
+| Sanear con DOMPurify en el cliente                       | Usa el analizador real del navegador, en el punto de inserción.            |
+| Imágenes remotas no se muestran                          | El PDF se compila sin red; la vista previa no promete lo que no habrá.     |
+| Solo PNG y JPEG                                          | Son los formatos que el motor LaTeX puede incluir.                         |
+| Zoom con la propiedad CSS `zoom`                         | Escala también el diseño, así el desplazamiento sigue siendo correcto.     |
 
 ## Riesgos conocidos
 

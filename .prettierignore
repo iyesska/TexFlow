@@ -7,3 +7,4 @@ test-results
 next-env.d.ts
 AGENTS.md
 src/app/fonts
+e2e/fixtures
