@@ -1,11 +1,10 @@
+import { LatexPane } from "@/features/latex-output/components/latex-pane";
 import { MarkdownPane } from "@/features/editor/components/markdown-pane";
 import { PaperSheet } from "@/features/preview/components/paper-sheet";
 import { ShortcutKeys } from "@/components/shortcut-keys";
 import { SHORTCUTS } from "@/config/shortcuts";
 
 import type { PaneId } from "../model/layout";
-import { PaneEmptyState } from "./pane-empty-state";
-import { PANE_META } from "./pane-meta";
 
 /** Keyboard hint; hidden on narrow screens, where there is no split view to toggle. */
 function ToggleHint({ pane }: { pane: PaneId }) {
@@ -14,18 +13,6 @@ function ToggleHint({ pane }: { pane: PaneId }) {
       <ShortcutKeys combo={SHORTCUTS.togglePane[pane]} />
       muestra u oculta este panel
     </p>
-  );
-}
-
-function LatexPlaceholder() {
-  return (
-    <PaneEmptyState
-      icon={PANE_META.latex.icon}
-      title="Sin código LaTeX todavía"
-      description="Aquí verás el LaTeX que Pandoc genera a partir de tu Markdown, listo para copiar o descargar. Llega en la fase 3."
-    >
-      <ToggleHint pane="latex" />
-    </PaneEmptyState>
   );
 }
 
@@ -50,7 +37,7 @@ function PreviewPlaceholder() {
 
 const CONTENTS: Readonly<Record<PaneId, () => React.JSX.Element>> = {
   markdown: MarkdownPane,
-  latex: LatexPlaceholder,
+  latex: LatexPane,
   preview: PreviewPlaceholder,
 };
 

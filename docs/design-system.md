@@ -75,14 +75,17 @@ base de la interfaz) y `text-sm` (14 px).
 
 ## Componentes propios
 
-| Componente        | Ubicación                           | Uso                           |
-| ----------------- | ----------------------------------- | ----------------------------- |
-| `Wordmark`        | `src/components/brand`              | Logotipo                      |
-| `ShortcutKeys`    | `src/components`                    | Muestra un atajo como teclas  |
-| `FullPageMessage` | `src/components/feedback`           | Error y 404                   |
-| `PaneFrame`       | `src/features/workspace/components` | Marco común de los paneles    |
-| `PaneEmptyState`  | `src/features/workspace/components` | Estado vacío de un panel      |
-| `PaperSheet`      | `src/features/preview/components`   | La hoja A4 de la vista previa |
+| Componente        | Ubicación                              | Uso                                 |
+| ----------------- | -------------------------------------- | ----------------------------------- |
+| `Wordmark`        | `src/components/brand`                 | Logotipo                            |
+| `ShortcutKeys`    | `src/components`                       | Muestra un atajo como teclas        |
+| `FullPageMessage` | `src/components/feedback`              | Error y 404                         |
+| `PaneFrame`       | `src/features/workspace/components`    | Marco común de los paneles          |
+| `PaneEmptyState`  | `src/features/workspace/components`    | Estado vacío de un panel            |
+| `PaperSheet`      | `src/features/preview/components`      | La hoja A4 de la vista previa       |
+| `SaveIndicator`   | `src/features/document/components`     | Estado de guardado del documento    |
+| `EditorToolbar`   | `src/features/editor/components`       | Controles de formato del editor     |
+| `ConversionAlert` | `src/features/latex-output/components` | Error de conversión sobre el código |
 
 ## Reglas
 

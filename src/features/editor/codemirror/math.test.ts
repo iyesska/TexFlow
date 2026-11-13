@@ -64,3 +64,21 @@ describe("footnotes", () => {
     expect(nodes("[enlace](https://a.b)", "FootnoteRef")).toEqual([]);
   });
 });
+
+describe("YAML metadata", () => {
+  it("recognises a metadata block at the top instead of a heading", () => {
+    const doc = "---\ntitle: Mi tesis\n---\n\n# Capítulo";
+    expect(nodes(doc, "FrontMatter")).toEqual(["---\ntitle: Mi tesis\n---"]);
+    expect(nodes(doc, "SetextHeading2")).toEqual([]);
+    expect(nodes(doc, "ATXHeading1")).toEqual(["# Capítulo"]);
+  });
+
+  it("accepts dots as the closing line", () => {
+    expect(nodes("---\na: 1\n...\ntexto", "FrontMatter")).toEqual(["---\na: 1\n..."]);
+  });
+
+  it("leaves dashes elsewhere, or followed by a blank line, alone", () => {
+    expect(nodes("---\n\ntexto\n---", "FrontMatter")).toEqual([]);
+    expect(nodes("texto\n\n---\na: 1\n---", "FrontMatter")).toEqual([]);
+  });
+});

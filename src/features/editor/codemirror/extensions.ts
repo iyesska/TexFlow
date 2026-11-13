@@ -28,8 +28,8 @@ import {
 import { slashCompletions, texCompletions } from "./completions";
 import { formattingKeymap } from "./keymap";
 import { markdownSupport } from "./language";
-import { spanishPhrases } from "./phrases";
-import { editorTheme } from "./theme";
+import { spanishPhrases } from "@/lib/codemirror/phrases";
+import { editorTheme } from "@/lib/codemirror/theme";
 
 export interface CursorPosition {
   readonly line: number;

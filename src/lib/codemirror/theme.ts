@@ -17,6 +17,8 @@ export const editorTheme = EditorView.theme({
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": {
     fontFamily: "var(--font-family-mono)",
+    // Source must show the characters typed: ligatures turn "|---|" into other glyphs.
+    fontVariantLigatures: "none",
     lineHeight: "1.7",
     overflow: "auto",
   },

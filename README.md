@@ -13,7 +13,7 @@ en verde y esta tabla actualizada.
 | ---- | -------------------------------------------------------------- | ---------- |
 | 1    | Configuración, arquitectura, sistema visual y shell del editor | Completada |
 | 2    | Editor Markdown con CodeMirror 6 y guardado automático         | Completada |
-| 3    | Conversión Markdown a LaTeX con Pandoc en el backend           | Pendiente  |
+| 3    | Conversión Markdown a LaTeX con Pandoc en el backend           | Completada |
 | 4    | Vista previa con KaTeX, tablas, imágenes y zoom                | Pendiente  |
 | 5    | Compilación PDF con Tectonic y exportaciones                   | Pendiente  |
 | 6    | Plantillas documentales                                        | Pendiente  |
@@ -47,8 +47,25 @@ Editor Markdown (fase 2):
 - El texto, el cursor y el historial de deshacer se conservan al ocultar y mostrar el
   panel.
 
-Todavía sin contenido real: los paneles LaTeX y Vista previa explican qué mostrarán y en
-qué fase llegan. Las imágenes se pueden referenciar, pero aún no subir.
+Conversión a LaTeX (fase 3):
+
+- El Markdown se convierte con Pandoc en el servidor tras cada pausa al escribir. Admite
+  encabezados, negrita y cursiva, listas, enlaces, imágenes, tablas, citas, código en
+  línea y en bloque, fórmulas y notas al pie.
+- Panel LaTeX de solo lectura con resaltado, numeración de líneas y búsqueda.
+- Dos salidas: el documento completo, listo para compilar, o solo el cuerpo para pegarlo
+  en un proyecto propio. El cuerpo va encabezado con las líneas de preámbulo que necesita.
+- Copiar el código y descargarlo como `.tex` con el nombre del documento.
+- Los metadatos YAML (`title`, `author`, `date`) al inicio del documento pasan al LaTeX y
+  dan nombre al documento.
+- Errores de conversión explicados en el panel, con su línea cuando Pandoc la indica; se
+  mantiene visible el último código correcto.
+- Pandoc se ejecuta aislado: sin shell, con `--sandbox`, en un directorio temporal propio
+  y con límites de tiempo, CPU, memoria, tamaño y concurrencia.
+
+Todavía sin contenido real: el panel Vista previa explica qué mostrará. Las imágenes se
+pueden referenciar, pero aún no subir. El preámbulo del documento completo es el genérico
+de Pandoc; las plantillas propias llegan en la fase 6.
 
 ### Atajos de teclado
 
@@ -85,8 +102,12 @@ qué fase llegan. Las imágenes se pueden referenciar, pero aún no subir.
 - Node.js 22 o superior.
 - pnpm 10 (`corepack enable` lo instala).
 
-A partir de las fases 3, 5 y 7 harán falta también Pandoc, Tectonic y PostgreSQL. Este
-documento se ampliará cuando lleguen.
+- Pandoc 3.1 o superior. En Debian y Ubuntu: `sudo apt-get install pandoc`. En macOS:
+  `brew install pandoc`.
+- Linux para los límites de CPU y tamaño de archivo del sandbox (usan `prlimit`). En otros
+  sistemas la aplicación funciona, con los límites de tiempo, memoria y salida.
+
+Las fases 5 y 7 añadirán Tectonic y PostgreSQL.
 
 ## Instalación
 
@@ -109,6 +130,7 @@ La aplicación queda en <http://localhost:3000>.
 | Variable              | Descripción                  | Valor por defecto       |
 | --------------------- | ---------------------------- | ----------------------- |
 | `NEXT_PUBLIC_APP_URL` | URL pública de la aplicación | `http://localhost:3000` |
+| `PANDOC_PATH`         | Ejecutable de Pandoc         | `pandoc`                |
 
 Las variables se validan con Zod en `src/config/env.ts`; la aplicación no arranca con un
 valor inválido.
@@ -137,7 +159,7 @@ pnpm exec playwright install chromium
 
 ```
 src/
-├─ app/                 Rutas: layout, página del editor, error y 404
+├─ app/                 Rutas: layout, página del editor, error, 404 y api/convert
 ├─ components/
 │  ├─ ui/               Primitivas shadcn/ui adaptadas a los tokens
 │  ├─ brand/            Logotipo
@@ -156,16 +178,60 @@ src/
 │  │  ├─ codemirror/    Sintaxis, comandos, sugerencias, atajos y tema (sin React)
 │  │  ├─ hooks/         Caché del estado del editor
 │  │  └─ components/    Editor, barra de herramientas y barra de estado
+│  ├─ latex-output/     Panel LaTeX
+│  │  ├─ model/         Cliente de la API y cálculo de cambios mínimos
+│  │  ├─ hooks/         Conversión con pausa y descarte de respuestas obsoletas
+│  │  └─ components/    Visor, opciones de salida, avisos y estado
 │  └─ preview/          Hoja de papel de la vista previa
+├─ server/              Lógica de servidor, sin React
+│  ├─ sandbox/          Ejecución aislada de procesos y límite de concurrencia
+│  ├─ conversion/       Servicio de conversión con Pandoc
+│  └─ http/             Lectura segura de cuerpos de petición
+├─ contracts/           Esquemas de la API compartidos por cliente y servidor
 ├─ hooks/               Hooks compartidos (atajos, media queries)
 ├─ config/              Entorno validado, atajos, datos del sitio
-├─ lib/                 Utilidades puras
+├─ lib/                 Utilidades puras y piezas de CodeMirror compartidas
 └─ styles/              Tokens de diseño y colores de sintaxis
 e2e/                    Tests Playwright
 docs/                   Arquitectura y sistema visual
 ```
 
-Las carpetas `src/server`, `prisma` y `docker` aparecerán con las fases que las llenan.
+Las carpetas `prisma` y `docker` aparecerán con las fases que las llenan.
+
+## API
+
+### `POST /api/convert`
+
+Convierte Markdown a LaTeX.
+
+```json
+{ "markdown": "# Hola", "standalone": true }
+```
+
+`standalone` es opcional (por defecto `true`): `true` devuelve un documento completo y
+`false` solo el cuerpo. El documento admite hasta 500 000 caracteres.
+
+Respuesta correcta (`200`):
+
+```json
+{ "ok": true, "latex": "\\section{Hola}", "warnings": [] }
+```
+
+Respuesta de error:
+
+```json
+{ "ok": false, "error": { "code": "syntax", "message": "…", "detail": "…", "line": 2 } }
+```
+
+| Código            | HTTP | Significado                                      |
+| ----------------- | ---- | ------------------------------------------------ |
+| `invalid-request` | 400  | La petición no es JSON válido o le faltan campos |
+| `too-large`       | 413  | El documento supera el tamaño máximo             |
+| `syntax`          | 422  | Error en el bloque de metadatos YAML             |
+| `limit-exceeded`  | 422  | Se superó el límite de tiempo, memoria o salida  |
+| `busy`            | 503  | Demasiadas conversiones a la vez                 |
+| `unavailable`     | 503  | Pandoc no está instalado o no se pudo ejecutar   |
+| `failed`          | 500  | Pandoc falló por otro motivo                     |
 
 ## Documentación
 
@@ -192,6 +258,6 @@ pnpm build
 pnpm start
 ```
 
-Desde la fase 3 el backend ejecuta Pandoc, y desde la fase 5 Tectonic, como procesos
+El backend ejecuta Pandoc, y desde la fase 5 ejecutará Tectonic, como procesos
 aislados. Eso exige un host que permita ejecutar binarios, así que el destino previsto es
 un contenedor (la imagen se añade en la fase 5), no una plataforma solo serverless.

@@ -7,11 +7,11 @@ existe de lo que está planificado.
 
 TexFlow es una sola aplicación Next.js con tres capas que no se mezclan.
 
-| Capa     | Ubicación        | Responsabilidad                                                       | Estado       |
-| -------- | ---------------- | --------------------------------------------------------------------- | ------------ |
-| Rutas    | `src/app`        | Layouts, páginas y route handlers. Validan la entrada y delegan.      | Fase 1       |
-| Features | `src/features/*` | UI de cada área, sus hooks y un modelo puro por feature.              | Fase 1       |
-| Servidor | `src/server/*`   | Lógica de negocio sin React: conversión, compilación, sandbox, datos. | Desde fase 3 |
+| Capa     | Ubicación        | Responsabilidad                                                       | Estado |
+| -------- | ---------------- | --------------------------------------------------------------------- | ------ |
+| Rutas    | `src/app`        | Layouts, páginas y route handlers. Validan la entrada y delegan.      | Fase 1 |
+| Features | `src/features/*` | UI de cada área, sus hooks y un modelo puro por feature.              | Fase 1 |
+| Servidor | `src/server/*`   | Lógica de negocio sin React: conversión, compilación, sandbox, datos. | Fase 3 |
 
 Reglas:
 
@@ -65,43 +65,72 @@ El editor separa CodeMirror de React:
 CodeMirror se carga con `next/dynamic` sin SSR: es la parte más pesada de la página y
 solo funciona en el navegador.
 
-## Flujo de conversión (fases 3 a 5)
+## Conversión a LaTeX (fase 3)
 
 ```
-Editor (CodeMirror)
-   │  Markdown, con debounce
-   ▼
-POST /api/convert ──► valida (Zod) ──► ConversionService ──► SandboxRunner ──► pandoc
-   │                                                                              │
-   ◄──────────────── LaTeX + HTML para la vista previa ◄──────────────────────────┘
-
-POST /api/compile ──► valida ──► CompilationService ──► SandboxRunner ──► tectonic
-   │                                                                          │
-   ◄──────────────── PDF, o errores con su línea ◄────────────────────────────┘
+Editor ──► DocumentSession ──► useLatexConversion (pausa de 350 ms, aborta la anterior)
+                                      │
+                                      ▼
+POST /api/convert ──► readJsonBody (corta al exceder el tamaño)
+                  ──► convertRequestSchema (Zod)
+                  ──► convertMarkdownToLatex ──► semáforo ──► runProcess ──► pandoc
+                                      │
+   { ok, latex, warnings } o { ok: false, error } ◄──┘
 ```
 
-La vista previa tendrá dos modos: HTML rápido con KaTeX mientras se escribe, y PDF real
-compilado, con navegación por páginas.
+- **Contrato compartido.** `src/contracts/convert.ts` define con Zod la petición y la
+  respuesta. La ruta valida la entrada con él y el cliente valida la respuesta, así que
+  ninguno de los dos confía en el otro.
+- **Ruta delgada.** `src/app/api/convert/route.ts` solo lee, valida, delega y traduce el
+  código de error a un estado HTTP.
+- **Servicio.** `src/server/conversion/convert-markdown.ts` construye los argumentos de
+  Pandoc, interpreta sus fallos y devuelve mensajes listos para mostrar.
+- **Cliente.** `useLatexConversion` convierte tras cada pausa, aborta la petición anterior
+  y marca el resultado como pendiente hasta que el servidor responde para el texto actual.
+  Mientras está pendiente no se puede copiar ni descargar: nunca se entrega código viejo.
+- **Visor.** El panel aplica solo el cambio mínimo entre el LaTeX anterior y el nuevo, de
+  modo que el desplazamiento y la selección no saltan al escribir.
+
+La vista previa (fase 4) y la compilación (fase 5) seguirán el mismo patrón: contrato,
+ruta delgada, servicio y `runProcess`.
 
 ## Modelo de seguridad
 
-Pandoc y LaTeX procesan contenido no confiable. Todo proceso externo pasará por un único
-`SandboxRunner` con estas garantías:
+Pandoc y LaTeX procesan contenido no confiable. Todo proceso externo pasa por
+`runProcess` (`src/server/sandbox/run-process.ts`).
 
-- Sin shell: `spawn` con un ejecutable fijo y argumentos de una lista cerrada. El
-  contenido del usuario entra por stdin o por archivos, nunca como argumento.
-- Un directorio temporal por trabajo, que se borra al terminar. Los nombres de archivo
-  los genera el servidor.
-- Límites de tiempo (con `SIGKILL` al vencer), memoria, CPU y tamaño de entrada y salida.
-- Pandoc con `--sandbox`, que le impide leer archivos y acceder a la red.
+En vigor desde la fase 3:
+
+- **Sin shell.** `spawn` recibe el ejecutable y los argumentos como lista. Lo que escribe
+  el usuario viaja solo por stdin, nunca como argumento ni como ruta.
+- **Argumentos fijos.** La lista de opciones de Pandoc es constante salvo un booleano.
+- **Ejecutable resuelto a ruta absoluta** en directorios del sistema, no en el `PATH` con
+  el que arrancó el servidor.
+- **Directorio temporal propio** por trabajo, vacío y borrado al terminar.
+- **Entorno mínimo.** El proceso no hereda las variables del servidor, así que no puede
+  filtrar sus secretos.
+- **Límites.** Tiempo de reloj (10 s, con `SIGKILL`), tiempo de CPU y tamaño de archivo
+  (`prlimit`), memoria (`+RTS -M512m`, el límite de montículo de Pandoc), salida capturada
+  (8 MB) y entrada (500 000 caracteres, cortada mientras se lee).
+- **Concurrencia.** Un semáforo permite cuatro conversiones a la vez; el resto espera
+  hasta cinco segundos y después recibe `busy`.
+- **`pandoc --sandbox`.** Pandoc no puede leer archivos ni acceder a la red.
+- **Cabeceras de seguridad** (`X-Frame-Options`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`) en `next.config.ts`.
+
+El LaTeX escrito a mano dentro del Markdown (por ejemplo `\input{...}`) se conserva en la
+salida: es texto y convertirlo no ejecuta nada. Su riesgo aparece al compilar, y ahí se
+controla.
+
+Previsto para la fase 5:
+
 - Tectonic con `--untrusted` (sin `shell-escape`) y con su bundle en caché, sin red.
-- En producción, el runner ejecuta dentro de un contenedor sin red y con sistema de
-  archivos de solo lectura salvo el directorio del trabajo. En desarrollo, límites de
-  proceso.
+- En producción, el runner dentro de un contenedor sin red y con sistema de archivos de
+  solo lectura salvo el directorio del trabajo.
 - Las imágenes remotas de un documento no se descargan; solo se usan archivos subidos.
 
-Ya vigente en la fase 1: cabeceras de seguridad (`X-Frame-Options`,
-`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) en `next.config.ts`.
+Limitación conocida: no hay límite de peticiones por usuario hasta que exista
+autenticación (fase 7). El semáforo protege al servidor, no reparte el turno.
 
 ## Persistencia (fase 7)
 
@@ -114,13 +143,19 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
 
 ## Decisiones tomadas
 
-| Decisión                    | Motivo                                                              |
-| --------------------------- | ------------------------------------------------------------------- |
-| Una app, no un monorepo     | Un solo despliegue; las capas se separan por carpetas y por lint.   |
-| Diseño de paneles en cookie | El servidor pinta el diseño guardado sin parpadeo.                  |
-| Atajos de panel con `Alt`   | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.   |
-| Fuente serif autoalojada    | Build reproducible y sin avisos; las demás usan `next/font/google`. |
-| shadcn/ui sobre Radix       | Primitivas accesibles cuyo código queda en el repositorio.          |
+| Decisión                                                 | Motivo                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------- |
+| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.   |
+| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                  |
+| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.   |
+| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`. |
+| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.          |
+| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.    |
+| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                |
+| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.      |
+| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.          |
+| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.           |
+| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.   |
 
 ## Riesgos conocidos
 

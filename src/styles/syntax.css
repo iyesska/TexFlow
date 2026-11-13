@@ -88,3 +88,8 @@
 .tok-invalid {
   color: var(--destructive);
 }
+
+/* LaTeX commands such as \section. */
+.tok-command {
+  color: var(--syntax-name);
+}

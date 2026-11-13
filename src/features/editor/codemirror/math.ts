@@ -80,6 +80,27 @@ function parseMathBlock(cx: BlockContext, line: Line): boolean {
   return true;
 }
 
+/**
+ * A YAML metadata block: `---` on the first line, closed by `---` or `...`. Without
+ * this the line above the closing dashes would be read as a heading.
+ */
+function parseFrontMatter(cx: BlockContext, line: Line): boolean {
+  if (cx.lineStart !== 0 || line.text !== "---") return false;
+  // Pandoc's rule: the opening dashes are not followed by a blank line.
+  if (cx.peekLine().trim() === "") return false;
+
+  let end = line.text.length;
+  while (cx.nextLine()) {
+    end = cx.lineStart + line.text.length;
+    if (line.text === "---" || line.text === "...") {
+      cx.nextLine();
+      break;
+    }
+  }
+  cx.addElement(cx.elt("FrontMatter", 0, end));
+  return true;
+}
+
 /** Pandoc footnote references and definition labels: `[^note]`. */
 function parseFootnoteRef(cx: InlineContext, pos: number): number {
   if (cx.char(pos + 1) !== 94 /* ^ */) return -1;
@@ -95,6 +116,7 @@ export const pandocSyntax: MarkdownConfig = {
     { name: "BlockMath", block: true, style: mathTag },
     { name: "MathMark", style: t.processingInstruction },
     { name: "FootnoteRef", style: t.link },
+    { name: "FrontMatter", block: true, style: t.meta },
   ],
   parseInline: [
     {
@@ -115,5 +137,8 @@ export const pandocSyntax: MarkdownConfig = {
       },
     },
   ],
-  parseBlock: [{ name: "MathBlock", before: "FencedCode", parse: parseMathBlock }],
+  parseBlock: [
+    { name: "FrontMatter", before: "LinkReference", parse: parseFrontMatter },
+    { name: "MathBlock", before: "FencedCode", parse: parseMathBlock },
+  ],
 };
