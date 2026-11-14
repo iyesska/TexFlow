@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { cn } from "@/lib/utils";
+
 import type { DocumentStructure } from "@/templates/catalog";
 import { PAPER_SIZES, type DocumentSettings } from "@/templates/settings";
 
@@ -65,9 +67,12 @@ function TextPage({
 export function TemplateThumbnail({
   settings,
   structure,
+  className,
 }: {
   settings: DocumentSettings;
   structure: DocumentStructure;
+  /** Sets the width; the height follows the paper. */
+  className?: string;
 }) {
   const paper = PAPER_SIZES[settings.paperSize];
   const { top, bottom, left, right } = settings.margins;
@@ -82,7 +87,10 @@ export function TemplateThumbnail({
   return (
     <span
       aria-hidden
-      className="relative block w-12 shrink-0 rounded-[2px] bg-paper shadow-[0_1px_2px_oklch(0_0_0/0.35)]"
+      className={cn(
+        "relative block w-12 shrink-0 rounded-[2px] bg-paper shadow-[0_1px_2px_oklch(0_0_0/0.35)]",
+        className,
+      )}
       style={{ aspectRatio: `${paper.width} / ${paper.height}` }}
     >
       {settings.header !== "none" && !cover ? (

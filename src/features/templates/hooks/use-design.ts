@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   useDocumentSession,
   useDocumentSettings,
-  useSaveStatus,
 } from "@/features/document/hooks/use-document";
 import { isCustomized, templateById, templateSettings } from "@/templates/catalog";
 import {
@@ -17,8 +16,6 @@ import {
 
 export interface Design {
   readonly settings: DocumentSettings;
-  /** False until the document has loaded: there is nothing to design yet. */
-  readonly isReady: boolean;
   /** True when the settings differ from their template's. */
   readonly isCustomized: boolean;
   /**
@@ -36,7 +33,6 @@ export interface Design {
 export function useDesign(): Design {
   const session = useDocumentSession();
   const settings = useDocumentSettings();
-  const isReady = useSaveStatus() !== "loading";
 
   const update = useCallback(
     (patch: Partial<DocumentSettings>) => {
@@ -75,7 +71,6 @@ export function useDesign(): Design {
 
   return {
     settings,
-    isReady,
     isCustomized: isCustomized(settings),
     update,
     applyTemplate,

@@ -15,7 +15,7 @@ import { insertParagraph } from "../codemirror/commands";
 
 const MAX_MEGABYTES = ASSET_LIMITS.maxBytes / (1024 * 1024);
 
-function rejectionMessage(fileName: string, reason: AssetRejection) {
+function rejectionMessage(fileName: string, reason: AssetRejection, detail?: string) {
   switch (reason) {
     case "unsupported-type":
       return {
@@ -32,10 +32,10 @@ function rejectionMessage(fileName: string, reason: AssetRejection) {
         title: `No se pudo añadir «${fileName}»`,
         description: `El documento ya tiene ${ASSET_LIMITS.maxPerDocument} imágenes, el máximo.`,
       };
-    case "storage-failed":
+    case "upload-failed":
       return {
         title: `No se pudo guardar «${fileName}»`,
-        description: "El almacenamiento del navegador puede estar lleno.",
+        description: detail ?? "Comprueba tu conexión y vuelve a intentarlo.",
       };
   }
 }
@@ -56,7 +56,11 @@ export function useImageInsertion(
       for (const file of files) {
         const result = await library.add(file);
         if (!result.ok) {
-          const { title, description } = rejectionMessage(file.name, result.reason);
+          const { title, description } = rejectionMessage(
+            file.name,
+            result.reason,
+            result.message,
+          );
           toast.error(title, { description });
           continue;
         }

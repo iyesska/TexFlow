@@ -5,14 +5,22 @@ import {
   detectAssetType,
 } from "@/contracts/assets";
 import { COMPILE_FIELDS, COMPILE_WARNINGS_HEADER } from "@/contracts/compilation";
+import { idSchema } from "@/contracts/documents";
 import { env } from "@/config/env";
 import { LIMITS } from "@/config/limits";
 import {
   compileDocument,
   type CompileImage,
 } from "@/server/compilation/compile-document";
-import { INVALID, respond, TOO_LARGE } from "@/server/http/json-route";
+import { imagesForCompile } from "@/server/assets/assets";
+import {
+  authorizeConversion,
+  INVALID,
+  respond,
+  TOO_LARGE,
+} from "@/server/http/json-route";
 import { readBodyBytes } from "@/server/http/read-body";
+import { compileRequests } from "@/server/security/limits";
 import { DEFAULT_SETTINGS } from "@/templates/catalog";
 import { documentSettingsSchema, type DocumentSettings } from "@/templates/settings";
 
@@ -44,10 +52,18 @@ function readSettings(field: FormDataEntryValue | null): DocumentSettings | null
   }
 }
 
+/** The optional document field: absent, or the id of a document. */
+function readDocumentId(field: FormDataEntryValue | null): string | null | undefined {
+  if (field === null) return null;
+  const parsed = idSchema.safeParse(field);
+  return parsed.success ? parsed.data : undefined;
+}
+
 interface CompileForm {
   readonly markdown: string;
   readonly images: CompileImage[];
   readonly settings: DocumentSettings;
+  readonly documentId: string | null;
 }
 
 async function readForm(
@@ -75,6 +91,9 @@ async function readForm(
   const settings = readSettings(form.get(COMPILE_FIELDS.settings));
   if (settings === null) return "invalid";
 
+  const documentId = readDocumentId(form.get(COMPILE_FIELDS.documentId));
+  if (documentId === undefined) return "invalid";
+
   const files = form.getAll(COMPILE_FIELDS.image);
   if (files.length > ASSET_LIMITS.maxPerDocument) return "invalid";
   const images: CompileImage[] = [];
@@ -84,18 +103,39 @@ async function readForm(
       return "invalid";
     images.push(image);
   }
-  return { markdown, images, settings };
+  return { markdown, images, settings, documentId };
+}
+
+/**
+ * The images to compile with: those uploaded, plus the document's stored ones the
+ * Markdown refers to. Null when the document is not the user's.
+ */
+async function gatherImages(
+  userId: string,
+  form: CompileForm,
+): Promise<CompileImage[] | null> {
+  if (form.documentId === null) return form.images;
+  const stored = await imagesForCompile(userId, form.documentId, form.markdown);
+  if (stored === null) return null;
+  const uploaded = new Set(form.images.map(({ name }) => name));
+  return [...form.images, ...stored.filter(({ name }) => !uploaded.has(name))];
 }
 
 /** Compiles a Markdown document, with its images, to PDF. */
 export async function POST(request: Request): Promise<Response> {
+  const authorized = await authorizeConversion(request, compileRequests);
+  if ("response" in authorized) return authorized.response;
+
   const form = await readForm(request);
   if (form === "too-large") return respond(TOO_LARGE);
   if (form === "invalid") return respond(INVALID);
 
+  const images = await gatherImages(authorized.user.id, form);
+  if (images === null) return respond(INVALID);
+
   const result = await compileDocument(
     form.markdown,
-    form.images,
+    images,
     form.settings,
     {
       pandocPath: env.PANDOC_PATH,

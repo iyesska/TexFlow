@@ -27,20 +27,26 @@ function readWarnings(header: string | null): Diagnostic[] {
   }
 }
 
+export interface CompileRequest {
+  readonly markdown: string;
+  readonly settings: DocumentSettings;
+  /** The stored document whose images the Markdown refers to. */
+  readonly documentId: string;
+}
+
 /**
- * Asks the server to compile the document, sending the images it uses. Always
- * resolves: network trouble and malformed answers come back as errors.
+ * Asks the server to compile the document. The images stay where they are: the
+ * server takes them from the stored document. Always resolves: network trouble and
+ * malformed answers come back as errors.
  */
 export async function requestCompilation(
-  markdown: string,
-  images: readonly { readonly name: string; readonly blob: Blob }[],
-  settings: DocumentSettings,
+  request: CompileRequest,
   signal: AbortSignal,
 ): Promise<CompilationOutcome> {
   const form = new FormData();
-  form.set(COMPILE_FIELDS.markdown, markdown);
-  form.set(COMPILE_FIELDS.settings, JSON.stringify(settings));
-  for (const { name, blob } of images) form.append(COMPILE_FIELDS.image, blob, name);
+  form.set(COMPILE_FIELDS.markdown, request.markdown);
+  form.set(COMPILE_FIELDS.settings, JSON.stringify(request.settings));
+  form.set(COMPILE_FIELDS.documentId, request.documentId);
 
   let response: Response;
   try {

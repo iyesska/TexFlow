@@ -12,12 +12,14 @@ TexFlow es una sola aplicación Next.js con tres capas que no se mezclan.
 | Rutas    | `src/app`        | Layouts, páginas y route handlers. Validan la entrada y delegan.      | Fase 1 |
 | Features | `src/features/*` | UI de cada área, sus hooks y un modelo puro por feature.              | Fase 1 |
 | Servidor | `src/server/*`   | Lógica de negocio sin React: conversión, compilación, sandbox, datos. | Fase 3 |
+| Acciones | `src/actions`    | Server Actions de las cuentas: entrar, darse de alta, salir.          | Fase 7 |
 
 Reglas:
 
 - Un componente no contiene lógica de negocio. La lógica vive en un `model/` puro, que se
   prueba sin React, o en `src/server`.
-- El código de cliente nunca importa de `src/server`; habla con él por la API. ESLint lo
+- El código de cliente nunca importa de `src/server`; habla con él por la API o por las
+  Server Actions de `src/actions`, que validan su entrada como cualquier ruta. ESLint lo
   impide (`no-restricted-imports` en `eslint.config.mjs`).
 - Toda entrada externa (cuerpos de petición, cookies, variables de entorno) se valida con
   Zod antes de usarse.
@@ -261,17 +263,110 @@ En vigor desde la fase 5:
 aplicación en la propia máquina, con documentos propios, donde bubblewrap no está
 disponible; nunca para un servidor que reciba documentos de otras personas.
 
-Limitación conocida: no hay límite de peticiones por usuario hasta que exista
-autenticación (fase 7). Los semáforos protegen al servidor, no reparten el turno.
+En vigor desde la fase 7:
 
-## Persistencia (fase 7)
+- **Sesión obligatoria** en todas las rutas de la API y en las páginas de documentos.
+  El proxy (`src/proxy.ts`) redirige a quien no ha entrado, pero es solo un atajo: cada
+  página y cada ruta vuelve a comprobar la sesión antes de tocar datos.
+- **Límites por usuario**: 240 conversiones y 20 compilaciones por minuto, 300
+  escrituras por minuto (guardados, subidas, cambios en la biblioteca), 10 intentos de
+  contraseña por correo cada 15 minutos y 10 altas por conexión cada hora.
+- **Origen comprobado** en toda petición que cambia algo: una petición con `Origin` de
+  otro sitio se rechaza, se lleve las cookies que se lleve. La cookie de sesión es
+  `HttpOnly` y `SameSite=Lax`.
+- **Contraseñas con scrypt** (N = 2¹⁵), comparadas en tiempo constante. Un correo que no
+  existe cuesta lo mismo que una contraseña equivocada, y el mensaje de error es el mismo:
+  no revela qué correos tienen cuenta.
+- **Tras entrar solo se va a páginas propias**: del destino pedido se toma la ruta y debe
+  ser una página de documentos.
+- **Imágenes servidas como imágenes**: el tipo que se comprobó al subirlas,
+  `nosniff` y `Content-Security-Policy: default-src 'none'; sandbox`.
 
-Hasta la fase 7 los documentos vivirán en el navegador detrás de una interfaz
-`DocumentStore`. En la fase 7 esa interfaz pasa a la API, sin cambios en el editor.
+## Cuentas y documentos (fase 7)
 
-Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
-(Markdown, plantilla y configuración); `DocumentVersion` (historial); `BibEntry`;
-`Asset` (imágenes).
+### Modelo de datos
+
+`prisma/schema.prisma`, con PostgreSQL y el cliente de Prisma generado en
+`src/server/db/generated` (fuera de git; `pnpm install` lo genera).
+
+| Modelo                                    | Contenido                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| `User`                                    | Nombre, correo único, hash de la contraseña (o nada, si entra con GitHub) |
+| `Account`, `Session`, `VerificationToken` | Las tablas de Auth.js, para el inicio de sesión con GitHub                |
+| `Folder`                                  | Carpetas de un usuario, de un solo nivel; nombre único por usuario        |
+| `Document`                                | Markdown, ajustes de diseño (JSON validado), título, revisión             |
+| `Asset`                                   | Imágenes de un documento, en `bytea`; nombre único por documento          |
+
+Borrar una cuenta borra sus carpetas y documentos; borrar un documento, sus imágenes;
+borrar una carpeta deja sus documentos fuera de carpetas.
+
+### Acceso a datos
+
+Toda función de `src/server/documents`, `folders` y `assets` recibe el id del
+propietario, que sale de la sesión y nunca de la petición, y lo pone en cada consulta.
+Un documento ajeno es indistinguible de uno que no existe: `404` en ambos casos.
+`getSessionUser` (`src/server/auth/session.ts`) lee la sesión una vez por petición y
+comprueba que la cuenta sigue existiendo.
+
+Los ajustes guardados se validan al leerlos: un documento con ajustes de una versión
+anterior se abre con el diseño por defecto en lugar de fallar.
+
+### Sesiones
+
+Auth.js v5 con sesiones JWT (30 días) en una cookie cifrada con `AUTH_SECRET`. El alta
+y el inicio de sesión con contraseña son Server Actions (`src/actions/account.ts`) que
+validan los campos con los mismos esquemas que el formulario (`src/contracts/account.ts`).
+Salir recarga la página entera: las páginas que Next.js conserva para volver atrás
+guardan documentos de esa cuenta, y no deben quedar en memoria.
+
+### Guardado por revisiones
+
+Cada documento tiene una `revision` que sube con cada guardado. El editor guarda tras
+cada pausa, uno a la vez, enviando la revisión de la que partió; el servidor solo
+escribe si sigue siendo la actual (`updateMany` con la revisión en la condición). Si no,
+responde `409` y la sesión del documento pasa a «Cambiado en otro sitio»: deja de
+guardar y pregunta si conservar esta versión o cargar la otra. Nada se sobrescribe sin
+preguntar.
+
+Al recargar, el navegador pide la página nueva antes de que salga el último guardado de
+la anterior, así que ese guardado puede llegar después. Para no perderlo ni crear un
+conflicto falso:
+
+1. Al salir, la pestaña deja lo que falta por guardar en `sessionStorage`
+   (`src/features/document/model/pending-work.ts`) y lo envía con `keepalive`.
+2. La página nueva, si encuentra trabajo pendiente distinto de lo que muestra, lo
+   recupera y lo guarda sobre la revisión de la que partió.
+3. El servidor acepta un guardado idéntico a lo que ya tiene aunque la revisión sea
+   anterior: es el mismo guardado llegando dos veces.
+
+Los fallos de red se reintentan con espera creciente; una sesión caducada se indica en
+la barra y se reintenta cuando se vuelve a entrar en otra pestaña. Los textos de más de
+20 000 caracteres no caben en un `keepalive`: con cambios sin guardar, cerrar la página
+pide confirmación.
+
+### Imágenes
+
+Se suben a `POST /api/documents/:id/assets`; el servidor comprueba el tipo por el
+contenido, elige el nombre y lo devuelve. La vista previa las carga desde su URL, con
+`ETag` y revalidación. Al compilar, el editor envía el id del documento y el servidor
+toma las imágenes guardadas que el Markdown menciona, sin volver a subirlas.
+
+### Estado entre páginas
+
+Con Cache Components, Next.js no desmonta la página que se deja: la oculta con
+`<Activity>` para volver a ella al instante. Por eso:
+
+- La biblioteca sustituye su estado por la lista del servidor cada vez que esta llega
+  de nuevo, para reflejar lo hecho en el editor.
+- El editor se identifica con el id y la fecha de modificación del documento: si cambió
+  desde que se mostró, se abre de nuevo; si no, se recupera tal como estaba.
+- Al ocultarse, el editor guarda lo pendiente (los efectos se limpian al ocultar).
+
+### Documentos de antes de las cuentas
+
+Las fases 1 a 6 guardaban un único documento en el navegador. La biblioteca lo detecta
+(`src/features/library/model/local-document.ts`) y ofrece importarlo una vez, con sus
+imágenes de IndexedDB; después lo borra del navegador. La muestra sin tocar no se ofrece.
 
 ## Decisiones tomadas
 
@@ -302,11 +397,26 @@ Modelo previsto: `User`, `Account` y `Session` (Auth.js); `Folder`; `Document`
 | Fuentes de la vista rápida = fuentes del PDF             | La vista rápida debe parecerse al resultado; las fuentes se cargan solo si la plantilla las usa.          |
 | Cabecera y pie solo en el PDF                            | En una hoja continua no hay páginas que numerar; mostrarlos sería inventar.                               |
 | Cambiar de plantilla reemplaza los ajustes               | La plantilla es un punto de partida; si se pierden ajustes hechos a mano, se puede deshacer.              |
+| Sesiones JWT, no en base de datos                        | Es lo que admite Auth.js con contraseña; la cuenta se comprueba en cada petición igualmente.              |
+| Contraseñas con scrypt de Node                           | Resistente a fuerza bruta con hardware y sin módulos nativos que compilar.                                |
+| Imágenes en PostgreSQL (`bytea`)                         | Una sola cosa que respaldar y permisos por documento sin un almacén aparte; el tamaño está acotado.       |
+| Concurrencia optimista por revisión                      | Varias pestañas o dispositivos sin bloqueos; un conflicto se resuelve preguntando, nunca en silencio.     |
+| Títulos con origen (`CONTENT` o `MANUAL`)                | El título sigue al texto hasta que se le da un nombre, y se puede volver a ese comportamiento.            |
+| Carpetas de un nivel                                     | Cubren el uso habitual sin la complejidad de un árbol; anidar puede venir después.                        |
+| Eliminar sin papelera, con confirmación                  | Simple y explícito; el historial de versiones de la fase 8 cubrirá la recuperación.                       |
+| Server Actions solo para las cuentas                     | Auth.js las usa para entrar y salir; los documentos van por una API REST que también usa el editor.       |
+| `connection()` antes de leer la sesión                   | Auth.js genera valores aleatorios al leerla; Next.js exige que eso ocurra ya en tiempo de petición.       |
 
 ## Riesgos conocidos
 
-- **La imagen Docker no se ha construido ni ejecutado.** El entorno de desarrollo no
-  tenía demonio de Docker. Está comprobado el servidor autocontenido que ejecuta.
+- **La imagen Docker no se ha construido de principio a fin.** La red del entorno de
+  desarrollo pasa por un proxy que los contenedores no pueden usar. Está comprobado el
+  servidor autocontenido que ejecuta, contra PostgreSQL.
+- **Límites de peticiones en memoria.** Valen para un proceso. Con varios procesos o
+  varias máquinas hace falta un almacén compartido (Redis, por ejemplo) detrás de la
+  misma interfaz (`src/server/security/rate-limit.ts`).
+- **Sin recuperación de contraseña ni verificación del correo.** Necesitan un servicio de
+  correo; Auth.js tiene el proveedor para ello.
 - **bubblewrap dentro de Docker** necesita que el contenedor pueda crear espacios de
   nombres de usuario, lo que exige relajar los perfiles seccomp y AppArmor por defecto.
   Es un compromiso: se debilita el aislamiento del contenedor para tener el de cada

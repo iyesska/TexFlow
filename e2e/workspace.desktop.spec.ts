@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/fixtures";
 
 // Panes live in <main>; the toast area is a region too, outside it.
 const panes = (page: Page) => page.getByRole("main").getByRole("region");
@@ -19,8 +19,8 @@ async function paneOrder(page: Page): Promise<string[]> {
   );
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+test.beforeEach(async ({ page, openDocument }) => {
+  await openDocument();
   // The workspace saves its layout once it is interactive; keyboard tests need that.
   await page.waitForFunction(() => document.cookie.includes("texflow_layout="));
 });

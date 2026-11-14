@@ -1,7 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.E2E_PORT ?? 3100);
-const baseURL = `http://127.0.0.1:${PORT}`;
+import {
+  E2E_AUTH_SECRET,
+  E2E_BASE_URL,
+  E2E_DATABASE_URL,
+  E2E_PORT,
+} from "./e2e/support/env";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -9,7 +13,8 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL, trace: "off" },
+  globalSetup: "./e2e/support/global-setup.ts",
+  use: { baseURL: E2E_BASE_URL, trace: "off" },
   projects: [
     {
       name: "desktop",
@@ -23,9 +28,17 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm build && pnpm start --port ${PORT}`,
-    url: baseURL,
+    command: `pnpm build && pnpm start --port ${E2E_PORT}`,
+    url: `${E2E_BASE_URL}/login`,
+    // A server already on the port is reused only outside CI, and only one started
+    // for these tests: it must use the test database and secret below.
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
+    env: {
+      DATABASE_URL: E2E_DATABASE_URL,
+      AUTH_SECRET: E2E_AUTH_SECRET,
+      AUTH_TRUST_HOST: "true",
+      NEXT_PUBLIC_APP_URL: E2E_BASE_URL,
+    },
   },
 });

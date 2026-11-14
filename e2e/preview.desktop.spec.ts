@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/fixtures";
 
 const editor = (page: Page) => page.getByRole("textbox", { name: "Editor Markdown" });
 const preview = (page: Page) => page.getByRole("article", { name: "Documento" });
@@ -17,12 +17,12 @@ async function write(page: Page, text: string) {
 
 async function pickImage(page: Page, file: string) {
   const choosing = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Imagen" }).click();
+  await page.getByRole("button", { name: "Imagen", exact: true }).click();
   await (await choosing).setFiles(fixture(file));
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+test.beforeEach(async ({ page, openDocument }) => {
+  await openDocument();
   await expect(editor(page)).toBeVisible();
 });
 
@@ -92,7 +92,11 @@ test("adds an image to the document and keeps it after a reload", async ({ page 
   );
   const image = preview(page).getByRole("img", { name: "Diagrama de prueba" });
   await expect(image).toBeVisible();
-  await expect(image).toHaveAttribute("src", /^blob:/);
+  // Served by the application, from the image stored with the document.
+  await expect(image).toHaveAttribute(
+    "src",
+    /^\/api\/documents\/[a-z0-9]+\/assets\/diagrama-de-prueba\.png$/,
+  );
   await expect(preview(page).locator("figcaption")).toHaveText("Diagrama de prueba");
   // The image really decoded: it has its natural size.
   expect(await image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(

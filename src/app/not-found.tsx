@@ -10,7 +10,7 @@ export default function NotFound() {
       description="La dirección puede estar mal escrita o el documento ya no está disponible."
       action={
         <Button asChild>
-          <Link href="/">Volver al editor</Link>
+          <Link href="/documents">Ir a tus documentos</Link>
         </Button>
       }
     />

@@ -8,6 +8,24 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: texflow
+          POSTGRES_PASSWORD: texflow
+          POSTGRES_DB: texflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U texflow -d texflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # The unit tests and the end-to-end tests each get a database of their own.
+      TEST_DATABASE_URL: postgresql://texflow:texflow@localhost:5432/texflow_test
+      E2E_DATABASE_URL: postgresql://texflow:texflow@localhost:5432/texflow_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -15,6 +33,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Create the test databases
+        run: |
+          psql postgresql://texflow:texflow@localhost:5432/texflow \
+            -c "CREATE DATABASE texflow_test" -c "CREATE DATABASE texflow_e2e"
       - name: Install Pandoc and bubblewrap
         run: sudo apt-get update && sudo apt-get install -y pandoc bubblewrap
       # Ubuntu runners forbid unprivileged user namespaces, which bubblewrap needs.

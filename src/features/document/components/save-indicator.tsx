@@ -3,11 +3,25 @@
 import {
   Check,
   CircleDashed,
+  KeyRound,
   LoaderCircle,
+  Split,
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +34,7 @@ interface StatusView {
   readonly className?: string;
 }
 
-const STATUS_VIEWS: Readonly<Record<Exclude<SaveStatus, "loading">, StatusView>> = {
+const STATUS_VIEWS: Readonly<Record<SaveStatus, StatusView>> = {
   saved: { label: "Guardado", icon: Check },
   unsaved: { label: "Sin guardar", icon: CircleDashed },
   saving: { label: "Guardando…", icon: LoaderCircle, className: "[&_svg]:animate-spin" },
@@ -29,13 +43,70 @@ const STATUS_VIEWS: Readonly<Record<Exclude<SaveStatus, "loading">, StatusView>>
     icon: TriangleAlert,
     className: "text-destructive",
   },
+  "signed-out": { label: "Sesión caducada", icon: KeyRound, className: "text-warning" },
+  conflict: { label: "Cambiado en otro sitio", icon: Split, className: "text-warning" },
 };
 
-/** Tells the writer whether their work is safe, and offers a retry when it is not. */
+/**
+ * Asks whose version stays when the document was saved elsewhere while being edited
+ * here. Never opens by itself: it would take the keyboard from the writer mid-sentence.
+ */
+function ConflictDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const session = useDocumentSession();
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Este documento ha cambiado en otro sitio</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se guardó desde otra pestaña o dispositivo mientras lo editabas aquí. Elige
+            qué versión conservar: la otra se perderá.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Decidir más tarde</AlertDialogCancel>
+          <AlertDialogAction
+            variant="outline"
+            onClick={() => {
+              session.abandon();
+              window.location.reload();
+            }}
+          >
+            Cargar la otra versión
+          </AlertDialogAction>
+          <AlertDialogAction onClick={() => void session.overwrite()}>
+            Conservar la mía
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** Tells the writer whether their work is safe, and what to do when it is not. */
 export function SaveIndicator() {
   const session = useDocumentSession();
   const status = useSaveStatus();
-  if (status === "loading") return null;
+  const [resolving, setResolving] = useState(false);
+  const previous = useRef(status);
+
+  // A conflict is worth a word the first time it happens; the indicator keeps it.
+  useEffect(() => {
+    if (status === "conflict" && previous.current !== "conflict") {
+      toast.warning("Este documento se ha guardado en otro sitio", {
+        description:
+          "Tus cambios no se guardarán hasta que elijas qué versión conservar.",
+        action: { label: "Resolver", onClick: () => setResolving(true) },
+      });
+    }
+    previous.current = status;
+  }, [status]);
 
   const { label, icon: Icon, className } = STATUS_VIEWS[status];
   return (
@@ -55,6 +126,20 @@ export function SaveIndicator() {
           Reintentar
         </Button>
       ) : null}
+      {status === "signed-out" ? (
+        <Button variant="outline" size="xs" asChild>
+          {/* A new tab, so the unsaved work here stays; it is saved once signed in. */}
+          <a href="/login?next=/documents" target="_blank" rel="noopener">
+            Iniciar sesión
+          </a>
+        </Button>
+      ) : null}
+      {status === "conflict" ? (
+        <Button variant="outline" size="xs" onClick={() => setResolving(true)}>
+          Resolver
+        </Button>
+      ) : null}
+      <ConflictDialog open={resolving} onOpenChange={setResolving} />
     </div>
   );
 }

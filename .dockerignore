@@ -8,3 +8,5 @@ e2e
 docs
 .env*
 !.env.example
+# Generated again inside the image, from the schema.
+src/server/db/generated

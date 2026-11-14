@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   COMPILE_FIELDS,
@@ -10,9 +10,18 @@ import {
   compileFailureSchema,
   diagnosticsSchema,
 } from "@/contracts/compilation";
+import { addAsset } from "@/server/assets/assets";
+import { createDocument } from "@/server/documents/documents";
 import { findIsolation } from "@/server/sandbox/isolation";
+import { createTestUser, databaseAvailable } from "@/server/testing/database";
+import { signInAs, TEST_USER } from "@/server/testing/session-mock";
+import { DEFAULT_SETTINGS } from "@/templates/catalog";
 
 import { POST } from "./route";
+
+vi.mock("@/server/auth/session", () => import("@/server/testing/session-mock"));
+
+beforeEach(() => signInAs(TEST_USER));
 
 const ready =
   existsSync("/usr/local/bin/tectonic") &&
@@ -21,9 +30,15 @@ const ready =
 
 const png = readFileSync(path.join(process.cwd(), "e2e/fixtures/Diagrama de prueba.png"));
 
-function post(fields: { markdown?: string; images?: [name: string, data: BlobPart][] }) {
+function post(fields: {
+  markdown?: string;
+  images?: [name: string, data: BlobPart][];
+  documentId?: string;
+}) {
   const form = new FormData();
   if (fields.markdown !== undefined) form.set(COMPILE_FIELDS.markdown, fields.markdown);
+  if (fields.documentId !== undefined)
+    form.set(COMPILE_FIELDS.documentId, fields.documentId);
   for (const [name, data] of fields.images ?? []) {
     form.append(COMPILE_FIELDS.image, new File([data], name));
   }
@@ -33,6 +48,19 @@ function post(fields: { markdown?: string; images?: [name: string, data: BlobPar
 }
 
 describe("POST /api/compile validation", () => {
+  it("answers 401 without a session", async () => {
+    signInAs(null);
+    const response = await post({ markdown: "x" });
+    expect(response.status).toBe(401);
+    expect(compileFailureSchema.parse(await response.json()).error.code).toBe(
+      "unauthorized",
+    );
+  });
+
+  it("rejects a document id that is not one", async () => {
+    expect((await post({ markdown: "x", documentId: "../x" })).status).toBe(400);
+  });
+
   it("rejects a request without a document or that is not a form", async () => {
     expect((await post({})).status).toBe(400);
     const json = new Request("http://localhost/api/compile", {
@@ -63,6 +91,42 @@ describe("POST /api/compile validation", () => {
     });
     expect(response.status).toBe(400);
   });
+});
+
+describe.skipIf(!databaseAvailable)("POST /api/compile with a stored document", () => {
+  it("refuses another user's document", async () => {
+    const owner = await createTestUser();
+    const created = await createDocument(owner.id, {
+      markdown: "x",
+      settings: DEFAULT_SETTINGS,
+    });
+    if (!created.ok) throw new Error("setup failed");
+    const stranger = await createTestUser();
+    signInAs(stranger);
+    expect((await post({ markdown: "x", documentId: created.document.id })).status).toBe(
+      400,
+    );
+  });
+
+  it.skipIf(!ready)(
+    "compiles with the images stored with the document",
+    async () => {
+      const user = await createTestUser();
+      signInAs(user);
+      const markdown = "![Figura](diagrama.png)";
+      const created = await createDocument(user.id, {
+        markdown,
+        settings: DEFAULT_SETTINGS,
+      });
+      if (!created.ok) throw new Error("setup failed");
+      await addAsset(user.id, created.document.id, "Diagrama.png", new Uint8Array(png));
+
+      const response = await post({ markdown, documentId: created.document.id });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/pdf");
+    },
+    60_000,
+  );
 });
 
 describe.skipIf(!ready)("POST /api/compile", () => {

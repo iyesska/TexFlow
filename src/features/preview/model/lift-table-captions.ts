@@ -8,7 +8,7 @@ export function liftTableCaptions(root: ParentNode): void {
     const table = caption.parentElement;
     if (!table) continue;
     const lifted = caption.ownerDocument.createElement("p");
-    lifted.className = "table-caption";
+    lifted.className = "tf-table-caption";
     lifted.append(...caption.childNodes);
     caption.remove();
     table.before(lifted);

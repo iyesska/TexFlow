@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/fixtures";
 
 const editor = (page: Page) => page.getByRole("textbox", { name: "Editor Markdown" });
 const latexPane = (page: Page) =>
@@ -24,9 +24,9 @@ async function openDesign(page: Page) {
   await expect(panel(page)).toBeVisible();
 }
 
-test.beforeEach(async ({ page, context }) => {
+test.beforeEach(async ({ page, context, openDocument }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
+  await openDocument();
   await expect(editor(page)).toBeVisible();
   await expect(body(page)).toContainText("Texto y listas");
 });

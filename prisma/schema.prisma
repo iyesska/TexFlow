@@ -1,0 +1,129 @@
+// TexFlow's data. Every row that holds a user's work names its owner, and every query
+// for it is scoped to that owner (src/server/documents, src/server/folders).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/server/db/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Someone who can sign in. Accounts, sessions and verification tokens are Auth.js's.
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String?    @unique
+  emailVerified DateTime?  @map("email_verified")
+  image         String?
+  /// scrypt hash for email and password sign-in; null for accounts from a provider.
+  passwordHash  String?    @map("password_hash")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  accounts      Account[]
+  sessions      Session[]
+  folders       Folder[]
+  documents     Document[]
+
+  @@map("users")
+}
+
+model Account {
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+/// A named group of documents. One level deep: folders do not nest.
+model Folder {
+  id        String     @id @default(cuid())
+  ownerId   String     @map("owner_id")
+  name      String
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@unique([ownerId, name])
+  @@map("folders")
+}
+
+/// Where a document's title comes from: its text, or a name the writer gave it.
+enum TitleSource {
+  CONTENT
+  MANUAL
+}
+
+model Document {
+  id          String      @id @default(cuid())
+  ownerId     String      @map("owner_id")
+  /// Deleting the folder leaves the document outside any folder.
+  folderId    String?     @map("folder_id")
+  title       String
+  titleSource TitleSource @default(CONTENT) @map("title_source")
+  markdown    String
+  /// Design settings; validated against src/templates/settings.ts on every read.
+  settings    Json
+  /// Counts saves of the content, so a stale tab cannot overwrite newer work.
+  revision    Int         @default(0)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder      Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  assets      Asset[]
+
+  @@index([ownerId, updatedAt(sort: Desc)])
+  @@index([folderId])
+  @@map("documents")
+}
+
+/// An image that belongs to a document, stored with it.
+model Asset {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  /// The file name the Markdown refers to, e.g. "diagrama.png".
+  name       String
+  type       String
+  size       Int
+  data       Bytes
+  createdAt  DateTime @default(now()) @map("created_at")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, name])
+  @@map("assets")
+}

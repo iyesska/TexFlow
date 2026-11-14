@@ -53,3 +53,11 @@ Las notas al pie se escriben así[^1].
 
 [^1]: Y su contenido va en cualquier lugar del documento.
 `;
+
+/** The sample, signed with the new user's name when there is one. */
+export function welcomeDocument(authorName: string | null): string {
+  const name = authorName?.replace(/[\r\n"\\]/g, " ").trim();
+  return name
+    ? SAMPLE_DOCUMENT.replace("author: Tu nombre", `author: "${name}"`)
+    : SAMPLE_DOCUMENT;
+}

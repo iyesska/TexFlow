@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/fixtures";
 
 const editor = (page: Page) => page.getByRole("textbox", { name: "Editor Markdown" });
 const latex = (page: Page) =>
@@ -15,8 +15,8 @@ async function write(page: Page, text: string) {
   await page.keyboard.type(text);
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+test.beforeEach(async ({ page, openDocument }) => {
+  await openDocument();
   await expect(editor(page)).toBeVisible();
 });
 

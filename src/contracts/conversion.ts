@@ -29,6 +29,8 @@ export const CONVERSION_ERROR_CODES = [
   "busy",
   "unavailable",
   "failed",
+  "unauthorized",
+  "rate-limited",
 ] as const;
 
 export type ConversionErrorCode = (typeof CONVERSION_ERROR_CODES)[number];

@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
 #
 # TexFlow: the Next.js server plus the tools it runs on documents (Pandoc, Tectonic)
-# and the sandbox it runs them in (bubblewrap).
+# and the sandbox it runs them in (bubblewrap). A second target, `migrate`, applies the
+# database migrations.
 #
 # Build from the repository root:
 #   docker build -f docker/Dockerfile -t texflow .
+#   docker build -f docker/Dockerfile --target migrate -t texflow-migrate .
 #
 # The runtime is Ubuntu 24.04 because its Pandoc (3.1) is the version the conversion
 # is tested against.
@@ -13,12 +15,18 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
+# Installing generates the database client, which needs the schema.
+COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 COPY . .
 # A self-contained server in .next/standalone, without node_modules to copy around.
 ENV NEXT_OUTPUT=standalone
 RUN pnpm build
+
+# Applies the migrations in prisma/migrations to DATABASE_URL, then exits.
+FROM build AS migrate
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 
 FROM ubuntu:24.04 AS runtime
 ENV NODE_ENV=production \

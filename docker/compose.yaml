@@ -1,6 +1,35 @@
-# Runs TexFlow from the image built by docker/Dockerfile:
-#   docker compose -f docker/compose.yaml up --build
+# Runs TexFlow with its database:
+#   AUTH_SECRET=$(openssl rand -base64 32) docker compose -f docker/compose.yaml up --build
+#
+# Three services: PostgreSQL, a one-off that applies the migrations, and the
+# application, which starts once the migrations are in.
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: texflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-texflow}
+      POSTGRES_DB: texflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U texflow -d texflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://texflow:${POSTGRES_PASSWORD:-texflow}@postgres:5432/texflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   texflow:
     build:
       context: ..
@@ -9,6 +38,14 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      DATABASE_URL: postgresql://texflow:${POSTGRES_PASSWORD:-texflow}@postgres:5432/texflow
+      # Signs the sessions. Required: generate one with `openssl rand -base64 32`.
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET, e.g. AUTH_SECRET=$(openssl rand -base64 32)}
+      # The address people use. Behind a proxy or on another host, change it.
+      AUTH_URL: "http://localhost:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     # PDF compilation isolates LaTeX with bubblewrap, which needs user namespaces.
     # Docker's default seccomp and AppArmor profiles forbid creating them inside a
     # container. Without these two lines the application still works, and answers
@@ -17,3 +54,6 @@ services:
       - seccomp=unconfined
       - apparmor=unconfined
     restart: unless-stopped
+
+volumes:
+  postgres-data:

@@ -1,10 +1,15 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { convertResponseSchema } from "@/contracts/conversion";
 import { LIMITS } from "@/config/limits";
+import { signInAs, TEST_USER } from "@/server/testing/session-mock";
 
 import { POST } from "./route";
+
+vi.mock("@/server/auth/session", () => import("@/server/testing/session-mock"));
+
+beforeEach(() => signInAs(TEST_USER));
 
 function post(body: unknown, headers: Record<string, string> = {}): Promise<Response> {
   return POST(
@@ -21,6 +26,16 @@ async function parsed(response: Response) {
 }
 
 describe("POST /api/convert", () => {
+  it("answers 401 without a session, before reading the body", async () => {
+    signInAs(null);
+    const response = await post(
+      { markdown: "# Hola" },
+      { "content-length": "999999999" },
+    );
+    expect(response.status).toBe(401);
+    expect(await parsed(response)).toMatchObject({ error: { code: "unauthorized" } });
+  });
+
   it("returns the LaTeX for a valid request", async () => {
     const response = await post({ markdown: "# Hola", standalone: false });
     expect(response.status).toBe(200);

@@ -114,6 +114,37 @@ la distingue.
 | `ExportMenu`          | `src/features/export/components`      | Las formas de sacar el documento                |
 | `DesignPanel`         | `src/features/templates/components`   | Panel lateral de plantilla y ajustes            |
 | `TemplateThumbnail`   | `src/features/templates/components`   | Miniatura de la primera página de una plantilla |
+| `DocumentTitle`       | `src/features/document/components`    | Nombre del documento, editable en su sitio      |
+| `BackToLibrary`       | `src/features/workspace/components`   | Vuelta a la biblioteca, tras guardar            |
+| `AccountMenu`         | `src/features/account/components`     | Quién ha entrado, tema y cerrar sesión          |
+| `Field`               | `src/features/account/components`     | Campo con etiqueta, pista y error enlazados     |
+| `PasswordField`       | `src/features/account/components`     | Contraseña que se puede mostrar                 |
+| `SampleSheet`         | `src/features/account/components`     | Hoja compuesta y su Markdown, al entrar         |
+| `Library`             | `src/features/library/components`     | La biblioteca de documentos                     |
+| `DocumentRow`         | `src/features/library/components`     | Un documento, con su menú y su menú contextual  |
+| `FolderNav`           | `src/features/library/components`     | Carpetas en la barra lateral                    |
+| `FolderChips`         | `src/features/library/components`     | Carpetas como fichas, en pantallas estrechas    |
+| `NameDialog`          | `src/features/library/components`     | Pide un nombre: carpeta o documento             |
+| `ConfirmDialog`       | `src/features/library/components`     | Confirma lo que no se puede deshacer            |
+| `ImportBanner`        | `src/features/library/components`     | Ofrece importar el documento del navegador      |
+
+## Páginas de cuenta y biblioteca
+
+- **Entrar y crear cuenta.** El formulario a un lado, a la medida de una columna de
+  lectura; al otro, en pantallas anchas, el resultado que promete la aplicación: una hoja
+  compuesta en Libertinus, con una fórmula de KaTeX, y la tarjeta del Markdown que la
+  produce, con los colores del editor. En pantallas estrechas, solo el formulario.
+- **Errores en su sitio.** Cada campo muestra su error debajo (`aria-invalid` y
+  `aria-describedby`); el error del intento entero va en un aviso sobre el botón. Lo
+  escrito se conserva, salvo la contraseña.
+- **La biblioteca es una lista.** Densa y legible: miniatura de la plantilla, título,
+  plantilla y carpeta, y la fecha en palabras («hace 5 minutos», «ayer»). El botón
+  «Nuevo documento» es el único relleno con el acento en la pantalla, como Exportar en el
+  editor; su flecha abre las plantillas.
+- **Las acciones, en dos sitios.** El menú «…» de cada fila (visible al pasar o al
+  enfocar) y el menú contextual ofrecen lo mismo, con las mismas palabras.
+- **Primera visita.** Sin documentos, la biblioteca enseña las plantillas como tarjetas:
+  elegir una crea el documento.
 
 ## Reglas
 

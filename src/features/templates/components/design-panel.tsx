@@ -37,7 +37,6 @@ export function DesignPanel() {
             <Button
               variant="ghost"
               size="sm"
-              disabled={!design.isReady}
               aria-label="Diseño del documento"
               className="text-muted-foreground"
             >

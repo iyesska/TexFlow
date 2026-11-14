@@ -10,7 +10,6 @@ import { ConversionStatusBar } from "@/features/conversion/components/conversion
 import {
   useDocumentMarkdown,
   useDocumentSettings,
-  useSaveStatus,
 } from "@/features/document/hooks/use-document";
 import { pageWidthPx, previewStyle } from "@/features/templates/model/preview-style";
 import { useElementWidth } from "@/hooks/use-element-width";
@@ -58,16 +57,12 @@ export function PreviewWorkbench() {
   const [pdfPageWidth, setPdfPageWidth] = useState<number | undefined>(undefined);
   const pdfRef = useRef<PdfDocumentHandle>(null);
 
-  const isLoading = useSaveStatus() === "loading";
   const markdown = useDocumentMarkdown();
   const compilation = useCompilation();
   const { mode } = compilation;
   // The quick preview only works while it is the one on screen.
   const settings = useDocumentSettings();
-  const preview = usePreviewHtml(
-    isLoading || mode !== "quick" ? null : markdown,
-    settings,
-  );
+  const preview = usePreviewHtml(mode !== "quick" ? null : markdown, settings);
   const images = useAssets();
 
   // Opening the PDF view compiles the document if what is there is out of date.
@@ -75,8 +70,8 @@ export function PreviewWorkbench() {
     if (compilation.isStale && !compilation.isCompiling) void compilation.compile();
   });
   useEffect(() => {
-    if (mode === "pdf" && !isLoading) compileIfStale();
-  }, [mode, isLoading]);
+    if (mode === "pdf") compileIfStale();
+  }, [mode]);
 
   // Until the pane has been measured there is no sensible scale to draw at.
   // The PDF's pages have their own size; the quick preview's sheet is always A4.

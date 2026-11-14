@@ -121,4 +121,13 @@ describe("insertions", () => {
   it("inserts at a given position instead of the cursor", () => {
     expect(run(insertParagraph("X", 0), "uno\ndo|s")).toBe("uno\n\nX|\ndos");
   });
+
+  it("never inserts inside the metadata block, but right after it", () => {
+    expect(run(insertParagraph("X"), "---\ntitle: a|\n---\ntexto")).toBe(
+      "---\ntitle: a\n---\n\nX|\ntexto",
+    );
+    expect(run(insertParagraph("X", 0), "---\ntitle: a\n...\n|")).toBe(
+      "---\ntitle: a\n...\n\nX|\n",
+    );
+  });
 });

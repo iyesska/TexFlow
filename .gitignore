@@ -46,3 +46,6 @@ next-env.d.ts
 # tests
 /playwright-report
 /test-results
+
+# generated Prisma client (pnpm install runs prisma generate)
+/src/server/db/generated

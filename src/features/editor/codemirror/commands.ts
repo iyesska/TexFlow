@@ -5,6 +5,7 @@ import {
   type EditorState,
   type Line,
   type StateCommand,
+  type Text,
 } from "@codemirror/state";
 
 /** Formatting commands. Each works on the editor state alone, so it can be tested. */
@@ -183,13 +184,27 @@ export function insertBlock(template: string): StateCommand {
   };
 }
 
+/** Where a leading YAML metadata block ends, or -1 when the document has none. */
+function frontMatterEnd(doc: Text): number {
+  if (doc.lines < 2 || doc.line(1).text !== "---") return -1;
+  for (let number = 2; number <= doc.lines; number++) {
+    const line = doc.line(number);
+    if (line.text === "---" || line.text === "...") return line.to;
+  }
+  return -1;
+}
+
 /**
  * Inserts `text` as a paragraph of its own: on the line at `at` (or at the cursor) if
- * that line is blank, otherwise after it. Leaves the cursor at the end of the text.
+ * that line is blank, otherwise after it. Never inside the metadata block, which would
+ * break it: there, after the block. Leaves the cursor at the end of the text.
  */
 export function insertParagraph(text: string, at?: number | null): StateCommand {
   return ({ state, dispatch }) => {
-    const line = state.doc.lineAt(at ?? state.selection.main.head);
+    let line = state.doc.lineAt(at ?? state.selection.main.head);
+    const metadataEnd = frontMatterEnd(state.doc);
+    if (metadataEnd >= 0 && line.from <= metadataEnd)
+      line = state.doc.lineAt(metadataEnd);
     const isBlank = line.text.trim() === "";
     const from = isBlank ? line.from : line.to;
     const insert = (isBlank ? "" : "\n\n") + text;

@@ -2,212 +2,262 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_SETTINGS, templateSettings } from "@/templates/catalog";
 
-import type { StoredDocument } from "./document";
-import { createDocumentSession } from "./document-session";
-import { createLocalDocumentStore, type DocumentStore } from "./document-store";
+import {
+  createDocumentSession,
+  documentTitle,
+  type ContentChange,
+  type DocumentStore,
+  type SaveOutcome,
+} from "./document-session";
 
-function memoryStore(initial?: StoredDocument) {
-  const saved: StoredDocument[] = [];
-  let failing = false;
+/** A server in memory: it keeps a revision and refuses saves made on an older one. */
+function fakeServer() {
+  const saves: ContentChange[] = [];
+  const queued: (SaveOutcome | Promise<SaveOutcome>)[] = [];
+  let revision = 3;
   const store: DocumentStore = {
-    load: async () => initial ?? null,
-    save: async (document) => {
-      if (failing) throw new Error("quota");
-      saved.push(document);
+    save: async (change) => {
+      saves.push(change);
+      const next = queued.shift();
+      if (next) {
+        const outcome = await next;
+        if (outcome.ok) revision = outcome.revision;
+        return outcome;
+      }
+      if (change.baseRevision !== revision)
+        return { ok: false, reason: "conflict", revision };
+      revision++;
+      return { ok: true, revision };
     },
+    rename: async (title) => ({ ok: true, manualTitle: title?.trim() || null }),
   };
-  return { store, saved, fail: (value: boolean) => (failing = value) };
+  return {
+    store,
+    saves,
+    /** Another tab saves. */
+    saveElsewhere: () => revision++,
+    /** The next save answers with this, or waits for it. */
+    answerNext: (outcome: SaveOutcome | Promise<SaveOutcome>) => queued.push(outcome),
+  };
 }
 
-const session = (store: DocumentStore) =>
-  createDocumentSession({
+function open(store: DocumentStore) {
+  return createDocumentSession({
     id: "doc",
     store,
-    initialMarkdown: "# Ejemplo",
-    initialSettings: DEFAULT_SETTINGS,
+    initial: {
+      markdown: "# Informe",
+      settings: DEFAULT_SETTINGS,
+      revision: 3,
+      manualTitle: null,
+    },
     autosaveDelayMs: 500,
-    now: () => new Date("2026-01-01T00:00:00Z"),
+    retryDelaysMs: [1_000, 4_000],
   });
+}
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("document session", () => {
-  it("starts from the sample when nothing is stored", async () => {
-    const doc = session(memoryStore().store);
-    expect(doc.getSnapshot().status).toBe("loading");
-    await doc.load();
+  it("opens with the document as the server has it", () => {
+    const doc = open(fakeServer().store);
     expect(doc.getSnapshot()).toEqual({
-      markdown: "# Ejemplo",
+      markdown: "# Informe",
       settings: DEFAULT_SETTINGS,
+      manualTitle: null,
       status: "saved",
     });
   });
 
-  it("loads the stored document", async () => {
-    const stored = {
-      id: "doc",
-      markdown: "guardado",
-      settings: templateSettings("thesis"),
-      updatedAt: "2025-01-01T00:00:00Z",
-    };
-    const doc = session(memoryStore(stored).store);
-    await doc.load();
-    expect(doc.getSnapshot().markdown).toBe("guardado");
-    expect(doc.getSnapshot().settings.templateId).toBe("thesis");
-  });
-
-  it("saves once after the editing pause, with the latest content", async () => {
-    const { store, saved } = memoryStore();
-    const doc = session(store);
-    await doc.load();
-
-    doc.setMarkdown("a");
-    await vi.advanceTimersByTimeAsync(300);
-    doc.setMarkdown("ab");
+  it("saves once after the editing pause, each save on top of the previous one", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    doc.setMarkdown("# Informe 1");
+    doc.setMarkdown("# Informe 12");
     expect(doc.getSnapshot().status).toBe("unsaved");
     await vi.advanceTimersByTimeAsync(499);
-    expect(saved).toHaveLength(0);
-
+    expect(server.saves).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(1);
-    expect(saved).toEqual([
-      {
-        id: "doc",
-        markdown: "ab",
-        settings: DEFAULT_SETTINGS,
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
+    expect(server.saves).toEqual([
+      { markdown: "# Informe 12", settings: DEFAULT_SETTINGS, baseRevision: 3 },
+    ]);
+    expect(doc.getSnapshot().status).toBe("saved");
+
+    doc.setMarkdown("# Informe 123");
+    await doc.flush();
+    expect(server.saves[1]?.baseRevision).toBe(4);
+  });
+
+  it("saves immediately on flush, and does nothing when already saved", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    await doc.flush();
+    expect(server.saves).toHaveLength(0);
+    doc.setMarkdown("ya");
+    await doc.flush();
+    expect(server.saves).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(server.saves).toHaveLength(1);
+  });
+
+  it("never runs two saves at once: a change made during one is saved after it", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    let answer: (outcome: SaveOutcome) => void = () => {};
+    server.answerNext(new Promise((resolve) => (answer = resolve)));
+
+    doc.setMarkdown("primero");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(doc.getSnapshot().status).toBe("saving");
+    doc.setMarkdown("segundo");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(server.saves).toHaveLength(1);
+
+    answer({ ok: true, revision: 4 });
+    const flushed = doc.flush();
+    await vi.advanceTimersByTimeAsync(0);
+    await flushed;
+    expect(server.saves.map(({ markdown }) => markdown)).toEqual(["primero", "segundo"]);
+    expect(server.saves[1]?.baseRevision).toBe(4);
+    expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("stops saving after a conflict, and replaces the other version only if asked", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    server.saveElsewhere();
+    doc.setMarkdown("mi versión");
+    await doc.flush();
+    expect(doc.getSnapshot().status).toBe("conflict");
+
+    // Edits stay on screen but are not saved over the other version.
+    doc.setMarkdown("mi versión, ampliada");
+    await vi.advanceTimersByTimeAsync(5_000);
+    await doc.flush();
+    expect(server.saves).toHaveLength(1);
+    expect(doc.getSnapshot()).toMatchObject({
+      markdown: "mi versión, ampliada",
+      status: "conflict",
+    });
+
+    await doc.overwrite();
+    expect(server.saves[1]).toMatchObject({
+      markdown: "mi versión, ampliada",
+      baseRevision: 4,
+    });
+    expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("can give up its version after a conflict, saving nothing more", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    server.saveElsewhere();
+    doc.setMarkdown("mi versión");
+    await doc.flush();
+    doc.abandon();
+    expect(doc.getSnapshot().status).toBe("saved");
+    doc.setMarkdown("otra cosa");
+    await doc.flush();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(server.saves).toHaveLength(1);
+  });
+
+  it("reports a failed save and retries it on its own", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    server.answerNext({ ok: false, reason: "failed" });
+    server.answerNext({ ok: false, reason: "failed" });
+    doc.setMarkdown("cambio");
+    await doc.flush();
+    expect(doc.getSnapshot().status).toBe("error");
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(server.saves).toHaveLength(2);
+    expect(doc.getSnapshot().status).toBe("error");
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(server.saves).toHaveLength(3);
+    expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("tells a signed-out writer apart from a failure, and saves once they are back", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    server.answerNext({ ok: false, reason: "signed-out" });
+    doc.setMarkdown("cambio");
+    await doc.flush();
+    expect(doc.getSnapshot().status).toBe("signed-out");
+    await doc.flush();
+    expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("treats an error thrown by the store as a failed save", async () => {
+    const doc = open({
+      save: () => Promise.reject(new Error("network")),
+      rename: async () => ({ ok: true, manualTitle: null }),
+    });
+    doc.setMarkdown("cambio");
+    await doc.flush();
+    expect(doc.getSnapshot().status).toBe("error");
+  });
+
+  it("saves a change of design like an edit, and ignores one that changes nothing", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    doc.setSettings({ ...DEFAULT_SETTINGS });
+    expect(doc.getSnapshot().status).toBe("saved");
+    doc.setSettings(templateSettings("thesis"));
+    await doc.flush();
+    expect(server.saves[0]?.settings.templateId).toBe("thesis");
+  });
+
+  it("renames the document, and lets its title follow the text again", async () => {
+    const doc = open(fakeServer().store);
+    expect(documentTitle(doc.getSnapshot())).toBe("Informe");
+    await doc.rename("  Mi nombre ");
+    expect(documentTitle(doc.getSnapshot())).toBe("Mi nombre");
+    await doc.rename(null);
+    expect(documentTitle(doc.getSnapshot())).toBe("Informe");
+  });
+
+  it("reports the work the server does not have yet, with the revision it is based on", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    expect(doc.pendingChange()).toBeNull();
+    doc.setMarkdown("sin guardar");
+    expect(doc.pendingChange()).toEqual({
+      markdown: "sin guardar",
+      settings: DEFAULT_SETTINGS,
+      baseRevision: 3,
+    });
+    await doc.flush();
+    expect(doc.pendingChange()).toBeNull();
+  });
+
+  it("takes back unsaved work and saves it on the revision it was edited from", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    doc.restore({
+      markdown: "recuperado",
+      settings: templateSettings("thesis"),
+      baseRevision: 3,
+    });
+    expect(doc.getSnapshot()).toMatchObject({ markdown: "recuperado", status: "saving" });
+    await doc.flush();
+    expect(server.saves).toEqual([
+      { markdown: "recuperado", settings: templateSettings("thesis"), baseRevision: 3 },
     ]);
     expect(doc.getSnapshot().status).toBe("saved");
   });
 
-  it("saves immediately on flush and does nothing when already saved", async () => {
-    const { store, saved } = memoryStore();
-    const doc = session(store);
-    await doc.load();
-
-    doc.setMarkdown("ahora");
-    await doc.flush();
-    expect(saved).toHaveLength(1);
-
-    await doc.flush();
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(saved).toHaveLength(1);
-  });
-
-  it("reports a failed save and recovers on the next one", async () => {
-    const { store, saved, fail } = memoryStore();
-    const doc = session(store);
-    await doc.load();
-
-    fail(true);
-    doc.setMarkdown("x");
-    await vi.advanceTimersByTimeAsync(500);
-    expect(doc.getSnapshot().status).toBe("error");
-
-    fail(false);
-    await doc.flush();
-    expect(doc.getSnapshot().status).toBe("saved");
-    expect(saved.at(-1)?.markdown).toBe("x");
-  });
-
-  it("saves a change of design like an edit, and ignores one that changes nothing", async () => {
-    const { store, saved } = memoryStore();
-    const doc = session(store);
-    await doc.load();
-
-    doc.setSettings({ ...DEFAULT_SETTINGS });
-    expect(doc.getSnapshot().status).toBe("saved");
-
-    const thesis = templateSettings("thesis");
-    doc.setSettings(thesis);
-    expect(doc.getSnapshot()).toMatchObject({ settings: thesis, status: "unsaved" });
-    await vi.advanceTimersByTimeAsync(500);
-    expect(saved.at(-1)?.settings).toEqual(thesis);
-    expect(doc.getSnapshot().status).toBe("saved");
-  });
-
-  it("stays unsaved when something changes while a save is running", async () => {
-    let finish = () => {};
-    const saved: StoredDocument[] = [];
-    const slow: DocumentStore = {
-      load: async () => null,
-      save: (document) =>
-        new Promise((resolve) => {
-          finish = () => {
-            saved.push(document);
-            resolve();
-          };
-        }),
-    };
-    const doc = session(slow);
-    await doc.load();
-
-    doc.setMarkdown("primero");
-    const saving = doc.flush();
-    doc.setSettings(templateSettings("minimal"));
-    finish();
-    await saving;
-    expect(doc.getSnapshot().status).toBe("unsaved");
-    expect(saved[0]?.settings).toEqual(DEFAULT_SETTINGS);
-  });
-
-  it("notifies subscribers and stops after unsubscribing", async () => {
-    const doc = session(memoryStore().store);
+  it("notifies subscribers and stops after unsubscribing", () => {
+    const doc = open(fakeServer().store);
     const listener = vi.fn();
     const unsubscribe = doc.subscribe(listener);
-    await doc.load();
+    doc.setMarkdown("a");
     expect(listener).toHaveBeenCalledTimes(1);
-
     unsubscribe();
-    doc.setMarkdown("z");
+    doc.setMarkdown("b");
     expect(listener).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("local document store", () => {
-  it("round-trips a document and rejects corrupt data", async () => {
-    const store = createLocalDocumentStore(() => window.localStorage);
-    const document = {
-      id: "a",
-      markdown: "# Hola",
-      settings: templateSettings("research-paper"),
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    await store.save(document);
-    expect(await store.load("a")).toEqual(document);
-    expect(await store.load("missing")).toBeNull();
-
-    window.localStorage.setItem("texflow:document:bad", "{not json");
-    expect(await store.load("bad")).toBeNull();
-    window.localStorage.setItem("texflow:document:odd", JSON.stringify({ id: 1 }));
-    expect(await store.load("odd")).toBeNull();
-  });
-});
-
-describe("local document store with older or damaged designs", () => {
-  const store = createLocalDocumentStore(() => window.localStorage);
-  const save = (value: unknown) =>
-    window.localStorage.setItem("texflow:document:viejo", JSON.stringify(value));
-
-  it("opens a document saved before templates existed with the default design", async () => {
-    save({ id: "viejo", markdown: "# Texto", updatedAt: "2025-01-01T00:00:00Z" });
-    expect(await store.load("viejo")).toMatchObject({
-      markdown: "# Texto",
-      settings: DEFAULT_SETTINGS,
-    });
-  });
-
-  it("keeps the text when the stored design no longer validates", async () => {
-    save({
-      id: "viejo",
-      markdown: "# Texto",
-      updatedAt: "2025-01-01T00:00:00Z",
-      settings: { ...DEFAULT_SETTINGS, font: "comic-sans" },
-    });
-    expect(await store.load("viejo")).toMatchObject({
-      markdown: "# Texto",
-      settings: DEFAULT_SETTINGS,
-    });
   });
 });

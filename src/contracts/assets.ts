@@ -34,3 +34,39 @@ export function detectAssetType(head: Uint8Array): AssetType | null {
   }
   return null;
 }
+
+const MAX_BASE_LENGTH = 40;
+
+/** The file name without any directory or extension: "a/b/foto.final.png" → "foto.final". */
+export function fileStem(fileName: string): string {
+  const base = fileName.split(/[\\/]/).pop() ?? "";
+  return base.replace(/\.[^.]*$/, "");
+}
+
+/**
+ * A safe, unique file name for a new image: "Mi Diagrama (final).PNG" becomes
+ * "mi-diagrama-final.png", or "mi-diagrama-final-2.png" if that is taken. The
+ * extension follows the detected type, not the original name. Always matches
+ * ASSET_NAME_PATTERN.
+ */
+export function assetName(
+  originalName: string,
+  type: AssetType,
+  taken: ReadonlySet<string>,
+): string {
+  const base =
+    fileStem(originalName)
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, MAX_BASE_LENGTH)
+      .replace(/^-+|-+$/g, "") || "imagen";
+  const extension = ASSET_TYPES[type];
+
+  let candidate = `${base}.${extension}`;
+  for (let count = 2; taken.has(candidate); count++) {
+    candidate = `${base}-${count}.${extension}`;
+  }
+  return candidate;
+}

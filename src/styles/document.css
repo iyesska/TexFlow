@@ -301,19 +301,20 @@
 }
 
 /* The caption is lifted out of the table (see lift-table-captions.ts) so that, as in
-   LaTeX, it spans the text block rather than the table. */
-.tf-document .table-caption {
+   LaTeX, it spans the text block rather than the table. Prefixed: Tailwind has a
+   table-caption utility of its own. */
+.tf-document .tf-table-caption {
   margin: 1.1em 0 0.5em;
   text-align: center;
   hyphens: manual;
 }
 
-.tf-document .table-caption::before {
+.tf-document .tf-table-caption::before {
   content: var(--table-label, "Tabla") " " counter(table) ": ";
   counter-increment: table;
 }
 
-.tf-document .table-caption + table {
+.tf-document .tf-table-caption + table {
   margin-top: 0;
 }
 

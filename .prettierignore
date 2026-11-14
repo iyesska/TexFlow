@@ -11,3 +11,5 @@ src/app/fonts
 # Pandoc Markdown and templates, whose syntax Prettier would rewrite
 pandoc/warmup.md
 pandoc/templates
+src/server/db/generated
+prisma/migrations

@@ -1,10 +1,7 @@
-import "fake-indexeddb/auto";
-
 import { describe, expect, it } from "vitest";
 
 import { ASSET_LIMITS, assetName, detectAssetType, suggestedAltText } from "./asset";
-import { createAssetLibrary } from "./asset-library";
-import { createIndexedDbAssetStore, type AssetStore } from "./asset-store";
+import { createAssetLibrary, type AssetStore } from "./asset-library";
 
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3];
 const JPEG = [0xff, 0xd8, 0xff, 0xe0, 1, 2, 3];
@@ -12,23 +9,23 @@ const JPEG = [0xff, 0xd8, 0xff, 0xe0, 1, 2, 3];
 const file = (bytes: number[], name: string, type = "image/png") =>
   new File([new Uint8Array(bytes)], name, { type });
 
-function library(store: AssetStore = memoryStore()) {
-  let count = 0;
-  const revoked: string[] = [];
-  const instance = createAssetLibrary({
-    documentId: "doc",
-    store,
-    urls: { create: () => `blob:test/${++count}`, revoke: (url) => revoked.push(url) },
-    now: () => new Date("2026-01-01T00:00:00Z"),
-  });
-  return { instance, revoked };
-}
-
-function memoryStore(): AssetStore {
-  const assets: Parameters<AssetStore["put"]>[0][] = [];
+/** A server in memory that names images like the real one. */
+function memoryStore(): AssetStore & { readonly uploads: File[] } {
+  const uploads: File[] = [];
+  const taken = new Set<string>();
   return {
-    list: async (documentId) => assets.filter((asset) => asset.documentId === documentId),
-    put: async (asset) => void assets.push(asset),
+    uploads,
+    url: (name) => `/api/documents/doc/assets/${name}`,
+    async upload(upload) {
+      uploads.push(upload);
+      const head = new Uint8Array(await upload.slice(0, 8).arrayBuffer());
+      const type = detectAssetType(head);
+      if (!type) return { ok: false, reason: "unsupported-type" };
+      const name = assetName(upload.name, type, taken);
+      taken.add(name);
+      return { ok: true, name, asset: { name, type, size: upload.size } };
+    },
+    download: async () => new Blob(["bytes"]),
   };
 }
 
@@ -76,32 +73,43 @@ describe("suggestedAltText", () => {
 });
 
 describe("asset library", () => {
-  it("stores an image under a safe name and exposes a URL for it", async () => {
-    const { instance } = library();
-    const result = await instance.add(file(PNG, "Figura 1.png"));
-    expect(result).toEqual({ ok: true, name: "figura-1.png" });
-    expect(instance.getSnapshot().get("figura-1.png")).toMatchObject({
+  const library = (store = memoryStore()) =>
+    createAssetLibrary({
+      store,
+      initial: [{ name: "previa.png", type: "image/png", size: 10 }],
+    });
+
+  it("lists the document's images with the URL each is served from", () => {
+    expect(library().getSnapshot().get("previa.png")).toEqual({
+      name: "previa.png",
       type: "image/png",
-      url: "blob:test/1",
+      size: 10,
+      url: "/api/documents/doc/assets/previa.png",
     });
   });
 
-  it("types the stored image by its content, not by what the file claims", async () => {
-    const { instance } = library();
-    const result = await instance.add(file(JPEG, "foto.png", "image/png"));
-    expect(result).toEqual({ ok: true, name: "foto.jpg" });
-    expect(instance.getSnapshot().get("foto.jpg")?.blob.type).toBe("image/jpeg");
+  it("stores a new image under the name the server chooses", async () => {
+    const instance = library();
+    expect(await instance.add(file(PNG, "Figura 1.png"))).toEqual({
+      ok: true,
+      name: "figura-1.png",
+    });
+    expect(instance.getSnapshot().get("figura-1.png")?.url).toBe(
+      "/api/documents/doc/assets/figura-1.png",
+    );
   });
 
-  it("rejects files that are not images, too large, or one too many", async () => {
-    const { instance } = library();
+  it("refuses files that are not images, too large, or one too many, before uploading", async () => {
+    const store = memoryStore();
+    const instance = library(store);
     const html = new File(["<script>alert(1)</script>"], "x.png", { type: "image/png" });
     expect(await instance.add(html)).toEqual({ ok: false, reason: "unsupported-type" });
 
     const huge = new File([new Uint8Array(ASSET_LIMITS.maxBytes + 1)], "big.png");
     expect(await instance.add(huge)).toEqual({ ok: false, reason: "too-large" });
+    expect(store.uploads).toHaveLength(0);
 
-    for (let index = 0; index < ASSET_LIMITS.maxPerDocument; index++) {
+    for (let index = 1; index < ASSET_LIMITS.maxPerDocument; index++) {
       await instance.add(file(PNG, `n${index}.png`));
     }
     expect(await instance.add(file(PNG, "extra.png"))).toEqual({
@@ -110,40 +118,33 @@ describe("asset library", () => {
     });
   });
 
-  it("reports a storage failure without listing the image", async () => {
-    const failing: AssetStore = {
-      list: async () => [],
-      put: async () => {
-        throw new Error("quota");
+  it("passes on the server's refusal without listing the image", async () => {
+    const instance = createAssetLibrary({
+      initial: [],
+      store: {
+        ...memoryStore(),
+        upload: async () => ({
+          ok: false,
+          reason: "upload-failed",
+          message: "Demasiadas peticiones seguidas.",
+        }),
       },
-    };
-    const { instance } = library(failing);
+    });
     expect(await instance.add(file(PNG, "a.png"))).toEqual({
       ok: false,
-      reason: "storage-failed",
+      reason: "upload-failed",
+      message: "Demasiadas peticiones seguidas.",
     });
     expect(instance.getSnapshot().size).toBe(0);
   });
 
-  it("notifies subscribers and releases its URLs on dispose", async () => {
-    const { instance, revoked } = library();
+  it("notifies subscribers, and reads only images it has", async () => {
+    const instance = library();
     let notified = 0;
     instance.subscribe(() => notified++);
     await instance.add(file(PNG, "a.png"));
     expect(notified).toBe(1);
-
-    instance.dispose();
-    expect(revoked).toEqual(["blob:test/1"]);
-  });
-
-  it("persists images in IndexedDB, per document", async () => {
-    const store = createIndexedDbAssetStore(() => indexedDB);
-    const first = library(store).instance;
-    await first.add(file(PNG, "persistente.png"));
-
-    const reopened = library(store).instance;
-    await reopened.load();
-    expect([...reopened.getSnapshot().keys()]).toEqual(["persistente.png"]);
-    expect(await store.list("otro-documento")).toEqual([]);
+    expect(await instance.read("a.png")).toBeInstanceOf(Blob);
+    expect(await instance.read("ajena.png")).toBeNull();
   });
 });

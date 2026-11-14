@@ -1,10 +1,15 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { previewResponseSchema } from "@/contracts/conversion";
 import { LIMITS } from "@/config/limits";
+import { signInAs, TEST_USER } from "@/server/testing/session-mock";
 
 import { POST } from "./route";
+
+vi.mock("@/server/auth/session", () => import("@/server/testing/session-mock"));
+
+beforeEach(() => signInAs(TEST_USER));
 
 function post(body: unknown): Promise<Response> {
   return POST(
@@ -17,6 +22,11 @@ function post(body: unknown): Promise<Response> {
 }
 
 describe("POST /api/preview", () => {
+  it("answers 401 without a session", async () => {
+    signInAs(null);
+    expect((await post({ markdown: "# Hola" })).status).toBe(401);
+  });
+
   it("returns the HTML for a valid request", async () => {
     const response = await post({ markdown: "# Hola" });
     expect(response.status).toBe(200);

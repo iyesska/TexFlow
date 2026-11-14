@@ -1,5 +1,7 @@
 "use client";
 
+import type { AssetDto, DocumentDto } from "@/contracts/documents";
+import type { AccountUser } from "@/features/account/model/account";
 import { AssetLibraryProvider } from "@/features/assets/hooks/use-assets";
 import { CompilationShortcuts } from "@/features/compilation/components/compilation-shortcuts";
 import { CompilationProvider } from "@/features/compilation/hooks/use-compilation";
@@ -18,7 +20,7 @@ import { SplitView } from "./split-view";
 import { TopBar } from "./top-bar";
 import { WorkspaceShortcuts } from "./workspace-shortcuts";
 
-function WorkspaceShell() {
+function WorkspaceShell({ user }: { user: AccountUser }) {
   const splitView = useSplitView();
   const { layout } = useWorkspaceLayout();
 
@@ -27,7 +29,7 @@ function WorkspaceShell() {
       <WorkspaceShortcuts splitView={splitView} />
       <DocumentShortcuts />
       <CompilationShortcuts />
-      <TopBar splitView={splitView} />
+      <TopBar splitView={splitView} user={user} />
       <main className="min-h-0 flex-1 px-1.5 pb-1.5">
         {splitView ? <SplitView /> : <Pane pane={layout.active} withMenu={false} />}
       </main>
@@ -35,15 +37,22 @@ function WorkspaceShell() {
   );
 }
 
-/** The editor workspace: top bar plus the Markdown, LaTeX and preview panes. */
-export function Workspace({ initialLayout }: { initialLayout: WorkspaceLayout }) {
+interface WorkspaceProps {
+  readonly document: DocumentDto;
+  readonly assets: readonly AssetDto[];
+  readonly user: AccountUser;
+  readonly initialLayout: WorkspaceLayout;
+}
+
+/** The editor workspace for one document: top bar plus the three panes. */
+export function Workspace({ document, assets, user, initialLayout }: WorkspaceProps) {
   return (
     <WorkspaceLayoutProvider initialLayout={initialLayout}>
-      <DocumentProvider>
-        <AssetLibraryProvider>
+      <DocumentProvider document={document}>
+        <AssetLibraryProvider documentId={document.id} assets={assets}>
           <CompilationProvider>
             <EditorSessionCacheProvider>
-              <WorkspaceShell />
+              <WorkspaceShell user={user} />
             </EditorSessionCacheProvider>
           </CompilationProvider>
         </AssetLibraryProvider>

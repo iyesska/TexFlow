@@ -87,7 +87,7 @@ describe("renderDocument", () => {
       new Map(),
     );
     const [caption, table] = Array.from(body.children);
-    expect(caption?.matches("p.table-caption")).toBe(true);
+    expect(caption?.matches("p.tf-table-caption")).toBe(true);
     expect(caption?.innerHTML).toBe("Datos <em>medidos</em>");
     expect(table?.tagName).toBe("TABLE");
     expect(table?.querySelector("caption")).toBeNull();

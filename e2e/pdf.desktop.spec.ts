@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/fixtures";
 import { strFromU8, unzipSync } from "fflate";
 
 // Compiling runs the real LaTeX engine: see scripts/setup-tectonic.sh.
@@ -29,8 +29,8 @@ async function exportAs(page: Page, item: string) {
   return downloading;
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+test.beforeEach(async ({ page, openDocument }) => {
+  await openDocument();
   await expect(editor(page)).toBeVisible();
 });
 

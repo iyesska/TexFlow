@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSaveStatus } from "@/features/document/hooks/use-document";
 
 const LINE_WIDTHS = [
   "w-2/5",
@@ -40,8 +39,7 @@ const MarkdownWorkbench = dynamic(
   { ssr: false, loading: EditorSkeleton },
 );
 
-/** The Markdown pane: the editor, once the document has been read from storage. */
+/** The Markdown pane: the editor, shown as soon as its code has loaded. */
 export function MarkdownPane() {
-  const status = useSaveStatus();
-  return status === "loading" ? <EditorSkeleton /> : <MarkdownWorkbench />;
+  return <MarkdownWorkbench />;
 }

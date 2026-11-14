@@ -15,11 +15,8 @@ import { convertResponseSchema } from "@/contracts/conversion";
 import { useAssetLibrary } from "@/features/assets/hooks/use-assets";
 import { useCompilation } from "@/features/compilation/hooks/use-compilation";
 import { requestConversion } from "@/features/conversion/model/request-conversion";
-import {
-  useDocumentSession,
-  useSaveStatus,
-} from "@/features/document/hooks/use-document";
-import { deriveTitle } from "@/features/document/model/document";
+import { useDocumentSession } from "@/features/document/hooks/use-document";
+import { documentTitle } from "@/features/document/model/document-session";
 import { exportFileName } from "@/features/document/model/file-name";
 import { useWorkspaceLayout } from "@/features/workspace/hooks/use-workspace-layout";
 import { downloadFile, downloadTextFile } from "@/lib/download";
@@ -35,11 +32,9 @@ export function ExportMenu() {
   const library = useAssetLibrary();
   const compilation = useCompilation();
   const { dispatch } = useWorkspaceLayout();
-  const isLoading = useSaveStatus() === "loading";
-
   const markdown = () => session.getSnapshot().markdown;
   const fileName = (extension: string) =>
-    exportFileName(deriveTitle(markdown()), extension);
+    exportFileName(documentTitle(session.getSnapshot()), extension);
 
   const fetchLatex = async (): Promise<string> => {
     const response = await requestConversion(
@@ -120,10 +115,11 @@ export function ExportMenu() {
       async () => {
         const latex = await fetchLatex();
         const images = await Promise.all(
-          [...library.getSnapshot().values()].map(async ({ name, blob }) => ({
-            name,
-            data: new Uint8Array(await blob.arrayBuffer()),
-          })),
+          [...library.getSnapshot().keys()].map(async (name) => {
+            const blob = await library.read(name);
+            if (!blob) throw new ExportError(`No se pudo leer la imagen «${name}».`);
+            return { name, data: new Uint8Array(await blob.arrayBuffer()) };
+          }),
         );
         const archive = buildProjectArchive({
           baseName: fileName("zip").replace(/\.zip$/, ""),
@@ -145,7 +141,7 @@ export function ExportMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" disabled={isLoading}>
+        <Button size="sm">
           <Download />
           Exportar
         </Button>

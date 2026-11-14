@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import type { CompileFailure, Diagnostic } from "@/contracts/compilation";
+import { imagesUsedBy } from "@/documents/used-images";
 import { useAssetLibrary, useAssets } from "@/features/assets/hooks/use-assets";
 import {
   useDocumentMarkdown,
@@ -24,7 +25,7 @@ import {
   requestCompilation,
   type CompilationOutcome,
 } from "../model/request-compilation";
-import { compilationKey, imagesUsedBy } from "../model/used-images";
+import { compilationKey } from "../model/used-images";
 
 /** Which rendering of the document the preview pane shows. */
 export type PreviewMode = "quick" | "pdf";
@@ -88,7 +89,10 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
     );
 
     setState((current) => ({ ...current, isCompiling: true }));
-    const outcome = await requestCompilation(text, images, design, controller.signal);
+    const outcome = await requestCompilation(
+      { markdown: text, settings: design, documentId: session.id },
+      controller.signal,
+    );
     if (controller.signal.aborted) return null;
 
     setState((current) =>

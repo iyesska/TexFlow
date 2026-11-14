@@ -14,6 +14,19 @@ const envSchema = z.object({
    * only for a machine where every document is your own.
    */
   SANDBOX_ISOLATION: z.enum(["required", "disabled"]).default("required"),
+  /**
+   * PostgreSQL connection string. Optional here so that builds and tests that never
+   * touch the database run without one; the database client refuses to start without it.
+   */
+  DATABASE_URL: z
+    .string()
+    .regex(/^postgres(?:ql)?:\/\//, "Debe ser una URL postgresql://")
+    .optional(),
+  /** Signs session tokens. Auth.js reads it directly and refuses to run without it. */
+  AUTH_SECRET: z.string().min(32, "Debe tener al menos 32 caracteres").optional(),
+  /** GitHub sign-in, offered only when both are set. */
+  AUTH_GITHUB_ID: z.string().min(1).optional(),
+  AUTH_GITHUB_SECRET: z.string().min(1).optional(),
 });
 
 const parsed = envSchema.safeParse({
@@ -22,6 +35,10 @@ const parsed = envSchema.safeParse({
   TECTONIC_PATH: process.env.TECTONIC_PATH,
   TECTONIC_CACHE_DIR: process.env.TECTONIC_CACHE_DIR,
   SANDBOX_ISOLATION: process.env.SANDBOX_ISOLATION,
+  DATABASE_URL: process.env.DATABASE_URL,
+  AUTH_SECRET: process.env.AUTH_SECRET,
+  AUTH_GITHUB_ID: process.env.AUTH_GITHUB_ID,
+  AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET,
 });
 
 if (!parsed.success) {

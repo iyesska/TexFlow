@@ -17,15 +17,21 @@ export async function readBodyBytes(
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > maxBytes) {
-      await reader.cancel();
-      return { reason: "too-large" };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        return { reason: "too-large" };
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch {
+    // The client went away mid-upload (a newer request replaced this one): there is
+    // no body, and no one left to answer.
+    return { reason: "missing" };
   }
   return { bytes: Buffer.concat(chunks) };
 }

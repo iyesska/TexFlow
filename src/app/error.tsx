@@ -18,8 +18,8 @@ export default function ErrorPage({
 
   return (
     <FullPageMessage
-      title="No se pudo cargar el espacio de trabajo"
-      description="Algo falló al preparar el editor. Tu documento no se ha modificado. Vuelve a intentarlo; si el error continúa, recarga la página."
+      title="No se pudo cargar esta página"
+      description="Algo falló al prepararla. Tus documentos no se han modificado. Vuelve a intentarlo; si el error continúa, recarga la página."
       action={<Button onClick={() => retry()}>Reintentar</Button>}
     />
   );

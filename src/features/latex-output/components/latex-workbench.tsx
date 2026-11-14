@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConversionAlert } from "@/features/conversion/components/conversion-alert";
@@ -8,9 +8,8 @@ import { ConversionStatusBar } from "@/features/conversion/components/conversion
 import {
   useDocumentMarkdown,
   useDocumentSettings,
-  useSaveStatus,
+  useDocumentTitle,
 } from "@/features/document/hooks/use-document";
-import { deriveTitle } from "@/features/document/model/document";
 import { exportFileName } from "@/features/document/model/file-name";
 
 import { useLatexConversion } from "../hooks/use-latex-conversion";
@@ -43,20 +42,11 @@ function ViewerSkeleton() {
 /** The LaTeX pane's content: output options, the generated code and its status. */
 export function LatexWorkbench() {
   const [standalone, setStandalone] = useState(true);
-  const isLoading = useSaveStatus() === "loading";
   const markdown = useDocumentMarkdown();
   const settings = useDocumentSettings();
-  const conversion = useLatexConversion(
-    isLoading ? null : markdown,
-    standalone,
-    settings,
-  );
-
-  const deferredMarkdown = useDeferredValue(markdown);
-  const fileName = useMemo(
-    () => exportFileName(deriveTitle(deferredMarkdown), "tex"),
-    [deferredMarkdown],
-  );
+  const conversion = useLatexConversion(markdown, standalone, settings);
+  const title = useDocumentTitle();
+  const fileName = useMemo(() => exportFileName(title, "tex"), [title]);
 
   return (
     <div className="flex h-full flex-col">
