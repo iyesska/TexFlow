@@ -8,6 +8,8 @@
  * in pt and em, so the whole sheet scales with the zoom.
  */
 
+/* aislop-ignore-file ai-slop/unused-css -- the classes styled here are written into the preview's HTML by Pandoc, citeproc and KaTeX, never by this codebase */
+
 .tf-document {
   color: var(--ink);
   font-family: var(--page-font-family, var(--font-family-serif));
@@ -394,6 +396,46 @@
 
 .tf-document sup {
   line-height: 0;
+}
+
+/* References, as Pandoc's citeproc lists them: a hanging indent for author-date
+   styles, a column of labels for numbered ones (IEEE). */
+.tf-document .references {
+  margin-top: 0.6em;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document .csl-entry {
+  margin: 0 0 0.45em;
+}
+
+.tf-document .hanging-indent .csl-entry {
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+
+.tf-document .csl-entry:has(> .csl-left-margin) {
+  display: flex;
+  gap: 0.6em;
+}
+
+.tf-document .csl-left-margin {
+  flex: 0 0 2.4em;
+}
+
+.tf-document .csl-right-inline {
+  flex: 1;
+  min-width: 0;
+}
+
+.tf-document .citation a {
+  text-decoration: none;
+}
+
+.tf-document .citation a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--paper-rule);
 }
 
 /* Math. KaTeX's faces are Computer Modern; the scale levels them with the text face. */

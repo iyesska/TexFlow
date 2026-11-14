@@ -21,6 +21,8 @@ export const COMPILE_FIELDS = {
   settings: "settings",
   /** One of the signed-in user's documents, whose stored images to use. Optional. */
   documentId: "documentId",
+  /** The BibTeX entries the document cites. Optional. */
+  bibliography: "bibliography",
 } as const;
 
 /** Carries the warnings of a successful compile: URI-encoded JSON of diagnostics. */

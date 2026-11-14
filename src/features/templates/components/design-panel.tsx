@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePanel } from "@/features/workspace/hooks/use-workspace-panels";
 import { templateById } from "@/templates/catalog";
 
 import { useDesign } from "../hooks/use-design";
@@ -28,9 +29,10 @@ export function DesignPanel() {
   const design = useDesign();
   const galleryLabelId = useId();
   const template = templateById(design.settings.templateId);
+  const [open, setOpen] = usePanel("design");
 
   return (
-    <Sheet modal={false}>
+    <Sheet modal={false} open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <SheetTrigger asChild>
@@ -38,10 +40,11 @@ export function DesignPanel() {
               variant="ghost"
               size="sm"
               aria-label="Diseño del documento"
-              className="text-muted-foreground"
+              // On a phone the view menu opens it: the top bar has no room.
+              className="text-muted-foreground max-sm:hidden"
             >
               <LayoutTemplate />
-              <span className="hidden sm:inline">Diseño</span>
+              <span className="hidden md:inline">Diseño</span>
             </Button>
           </SheetTrigger>
         </TooltipTrigger>

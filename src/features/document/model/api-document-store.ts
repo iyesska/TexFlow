@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-import { documentSummarySchema, saveResultSchema } from "@/contracts/documents";
+import {
+  documentSummarySchema,
+  saveResultSchema,
+  type DocumentDto,
+} from "@/contracts/documents";
 import { callApi } from "@/lib/api-client";
 
-import type { DocumentStore } from "./document-session";
+import type { DocumentStore, OpenedDocument } from "./document-session";
 
 /**
  * Saves small enough to send with `keepalive`, which lets them finish while the page
@@ -12,6 +16,17 @@ import type { DocumentStore } from "./document-session";
 const KEEPALIVE_MAX_LENGTH = 20_000;
 
 const renamedSchema = z.object({ document: documentSummarySchema });
+
+/** A document as the API sends it, as a session opens it. */
+export function openedDocument(document: DocumentDto): OpenedDocument {
+  return {
+    markdown: document.markdown,
+    settings: document.settings,
+    bibliography: document.bibliography,
+    revision: document.revision,
+    manualTitle: document.titleSource === "manual" ? document.title : null,
+  };
+}
 
 /** Whether a save of this text can still finish after the page is closed. */
 export function canSaveWhileClosing(markdown: string): boolean {

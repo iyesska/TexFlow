@@ -82,3 +82,17 @@ describe("YAML metadata", () => {
     expect(nodes("texto\n\n---\na: 1\n---", "FrontMatter")).toEqual([]);
   });
 });
+
+describe("citation syntax", () => {
+  it("marks Pandoc citations, in brackets or in the text", () => {
+    expect(nodes("Según [@perez2020, p. 3; @gauss:1801] y -@knuth.", "Citation")).toEqual(
+      ["@perez2020", "@gauss:1801", "-@knuth"],
+    );
+    expect(nodes("Con llaves: [@{clave rara}].", "Citation")).toEqual(["@{clave rara}"]);
+  });
+
+  it("leaves e-mail addresses and code alone", () => {
+    expect(nodes("Escribe a ana@example.com.", "Citation")).toEqual([]);
+    expect(nodes("`@decorador` y\n\n```\n@otro\n```", "Citation")).toEqual([]);
+  });
+});

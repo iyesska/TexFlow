@@ -22,6 +22,7 @@ export const ASSET_UPLOAD_FIELD = "file";
 export const idSchema = z.string().regex(/^[a-z0-9]{8,40}$/, "Identificador no válido.");
 
 const markdownSchema = z.string().max(LIMITS.maxMarkdownLength);
+const bibliographySchema = z.string().max(LIMITS.maxBibliographyLength);
 const titleSchema = z.string().trim().max(TITLE_MAX_LENGTH);
 
 export const documentSummarySchema = z.object({
@@ -39,6 +40,7 @@ export type DocumentSummaryDto = z.infer<typeof documentSummarySchema>;
 export const documentSchema = documentSummarySchema.extend({
   markdown: z.string(),
   settings: documentSettingsSchema,
+  bibliography: z.string(),
   revision: z.number().int().min(0),
   createdAt: z.string(),
 });
@@ -56,6 +58,7 @@ export type FolderDto = z.infer<typeof folderSchema>;
 export const createDocumentRequestSchema = z.object({
   markdown: markdownSchema.default(""),
   settings: documentSettingsSchema.default(DEFAULT_SETTINGS),
+  bibliography: bibliographySchema.default(""),
   folderId: idSchema.nullable().optional(),
   title: titleSchema.nullable().optional(),
 });
@@ -68,6 +71,8 @@ export const updateDocumentRequestSchema = z.discriminatedUnion("action", [
     action: z.literal("save"),
     markdown: markdownSchema,
     settings: documentSettingsSchema,
+    /** Only when it changed: absent, the stored bibliography stays as it is. */
+    bibliography: bibliographySchema.optional(),
     baseRevision: z.number().int().min(0),
   }),
   z.object({
@@ -128,3 +133,67 @@ export const documentErrorSchema = z.object({
 });
 
 export type DocumentError = z.infer<typeof documentErrorSchema>;
+
+export const VERSION_KINDS = ["auto", "named", "before-restore"] as const;
+
+export const versionSummarySchema = z.object({
+  id: z.string(),
+  /** auto: kept while editing; named: kept by the writer; before-restore: undone by a restore. */
+  kind: z.enum(VERSION_KINDS),
+  label: z.string().nullable(),
+  title: z.string(),
+  revision: z.number().int().min(0),
+  createdAt: z.string(),
+});
+
+export type VersionSummaryDto = z.infer<typeof versionSummarySchema>;
+
+export const versionSchema = versionSummarySchema.extend({
+  markdown: z.string(),
+  settings: documentSettingsSchema,
+  bibliography: z.string(),
+});
+
+export type VersionDto = z.infer<typeof versionSchema>;
+
+export const VERSION_LABEL_MAX_LENGTH = 80;
+
+export const versionContentSchema = z.object({
+  markdown: markdownSchema,
+  settings: documentSettingsSchema,
+  bibliography: bibliographySchema,
+});
+
+export type VersionContent = z.infer<typeof versionContentSchema>;
+
+export const namedVersionRequestSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, "Escribe un nombre para la versión.")
+    .max(VERSION_LABEL_MAX_LENGTH, "El nombre es demasiado largo."),
+  /**
+   * What to keep instead of the stored document: work this tab could not save, kept
+   * when the writer chooses the copy saved elsewhere.
+   */
+  content: versionContentSchema.optional(),
+});
+
+export const restoreRequestSchema = z.object({
+  /** The revision the writer was looking at; a newer one is a conflict. */
+  baseRevision: z.number().int().min(0),
+});
+
+export const versionListResponseSchema = z.object({
+  versions: z.array(versionSummarySchema),
+});
+
+export const versionResponseSchema = z.object({ version: versionSchema });
+
+export const namedVersionResponseSchema = z.object({ version: versionSummarySchema });
+
+export const restoreResponseSchema = z.object({
+  document: documentSchema,
+  /** The state the restore replaced, kept as a version: restoring it undoes this. */
+  kept: versionSummarySchema,
+});

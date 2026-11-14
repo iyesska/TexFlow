@@ -5,6 +5,8 @@ export interface ProjectFiles {
   readonly baseName: string;
   readonly markdown: string;
   readonly latex: string;
+  /** The document's references, as BibTeX; left out when there are none. */
+  readonly bibliography?: string;
   /** The document's images, by the name the sources refer to them with. */
   readonly images: readonly { readonly name: string; readonly data: Uint8Array }[];
   /** The compiled PDF, when there is one that matches the sources. */
@@ -22,6 +24,9 @@ export function buildProjectArchive(project: ProjectFiles): Uint8Array {
     [inFolder(`${baseName}.md`)]: strToU8(project.markdown),
     [inFolder(`${baseName}.tex`)]: strToU8(project.latex),
   };
+  if (project.bibliography?.trim()) {
+    files[inFolder(`${baseName}.bib`)] = strToU8(project.bibliography);
+  }
   for (const image of project.images) files[inFolder(image.name)] = image.data;
   if (project.pdf) files[inFolder(`${baseName}.pdf`)] = project.pdf;
   // Images and PDFs are already compressed; a light level keeps this fast.

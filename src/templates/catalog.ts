@@ -1,7 +1,8 @@
 import {
-  settingsKey,
+  type CitationStyle,
   type DocumentSettings,
   type Language,
+  settingsKey,
   type TemplateId,
 } from "./settings";
 
@@ -9,7 +10,10 @@ import {
 export type DocumentStructure = "article" | "book";
 
 /** The settings a template brings; the language belongs to the document, not to it. */
-export type TemplateDefaults = Omit<DocumentSettings, "templateId" | "language">;
+export type TemplateDefaults = Omit<
+  DocumentSettings,
+  "templateId" | "language" | "citationStyle"
+>;
 
 export interface DocumentTemplate {
   readonly id: TemplateId;
@@ -172,11 +176,16 @@ export function templateById(id: TemplateId): DocumentTemplate {
 }
 
 /** A template's settings, for a document in the given language. */
+/**
+ * A template's settings. The language and the citation style belong to the document
+ * rather than its look, so they carry over from one template to another.
+ */
 export function templateSettings(
   id: TemplateId,
   language: Language = "es",
+  citationStyle: CitationStyle = "chicago-author-date",
 ): DocumentSettings {
-  return { templateId: id, ...templateById(id).defaults, language };
+  return { templateId: id, ...templateById(id).defaults, language, citationStyle };
 }
 
 /** The settings of a new document. */
@@ -186,6 +195,8 @@ export const DEFAULT_SETTINGS: DocumentSettings = templateSettings(DEFAULT_TEMPL
 export function isCustomized(settings: DocumentSettings): boolean {
   return (
     settingsKey(settings) !==
-    settingsKey(templateSettings(settings.templateId, settings.language))
+    settingsKey(
+      templateSettings(settings.templateId, settings.language, settings.citationStyle),
+    )
   );
 }

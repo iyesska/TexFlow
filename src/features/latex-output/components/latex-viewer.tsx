@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 
 import { latexViewerExtensions } from "../codemirror/viewer-extensions";
-import { minimalChange } from "../model/text-diff";
+import { minimalChange } from "@/lib/text-diff";
 
 /** Shows LaTeX read-only, updating in place as new code arrives. */
 export function LatexViewer({ latex }: { latex: string }) {

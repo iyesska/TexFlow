@@ -74,6 +74,14 @@ export const LANGUAGES = ["es", "en"] as const;
 
 export type Language = (typeof LANGUAGES)[number];
 
+/**
+ * How citations and the list of references are written. Chicago is Pandoc's own
+ * default; the others are CSL styles shipped in pandoc/csl.
+ */
+export const CITATION_STYLES = ["chicago-author-date", "apa", "ieee"] as const;
+
+export type CitationStyle = (typeof CITATION_STYLES)[number];
+
 export const MARGIN_LIMITS = { min: 10, max: 60 } as const;
 
 /** The text block can never be narrower or shorter than this, in millimetres. */
@@ -104,6 +112,8 @@ export const documentSettingsSchema = z
     tableOfContents: z.boolean(),
     cover: z.enum(COVER_STYLES),
     language: z.enum(LANGUAGES),
+    // Documents saved before citations existed have none: they get the default.
+    citationStyle: z.enum(CITATION_STYLES).default("chicago-author-date"),
   })
   .superRefine((settings, context) => {
     const paper = PAPER_SIZES[settings.paperSize];
@@ -148,5 +158,6 @@ export function settingsKey(settings: DocumentSettings): string {
     settings.tableOfContents,
     settings.cover,
     settings.language,
+    settings.citationStyle,
   ].join("|");
 }

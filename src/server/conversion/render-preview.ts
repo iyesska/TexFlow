@@ -8,6 +8,7 @@ import {
 import { previewLayoutOptions } from "@/server/templates/latex-layout";
 import type { DocumentSettings } from "@/templates/settings";
 
+import { citationSetup } from "./citations";
 import { MARKDOWN_FORMAT, pandocResource, runPandoc } from "./pandoc";
 
 function previewOptions(settings: DocumentSettings): string[] {
@@ -40,10 +41,12 @@ export async function renderPreviewHtml(
   request: PreviewRequest,
   pandocPath: string,
 ): Promise<PreviewResponse> {
+  const citations = citationSetup(request.bibliography, request.settings);
   const result = await runPandoc(
     request.markdown,
-    previewOptions(request.settings),
+    [...previewOptions(request.settings), ...citations.options],
     pandocPath,
+    citations.files,
   );
   if (!result.ok) return result;
   return { ok: true, html: result.output, warnings: result.warnings };

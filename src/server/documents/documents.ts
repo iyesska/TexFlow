@@ -3,12 +3,10 @@ import "server-only";
 import { ACCOUNT_LIMITS } from "@/contracts/documents";
 import { deriveTitle } from "@/documents/title";
 import { db, Prisma, TitleSource } from "@/server/db/client";
-import { DEFAULT_SETTINGS } from "@/templates/catalog";
-import {
-  documentSettingsSchema,
-  settingsKey,
-  type DocumentSettings,
-} from "@/templates/settings";
+import { settingsKey, type DocumentSettings } from "@/templates/settings";
+
+import { readSettings } from "./stored-settings";
+import { keepVersionIfDue } from "./versions";
 
 /**
  * The documents a user owns. Every function takes the owner's id, which comes from the
@@ -29,6 +27,8 @@ export interface DocumentSummary {
 export interface DocumentRecord extends DocumentSummary {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  /** The references the text can cite, as BibTeX. */
+  readonly bibliography: string;
   readonly revision: number;
   readonly createdAt: Date;
 }
@@ -40,18 +40,13 @@ const FULL = {
   folderId: true,
   markdown: true,
   settings: true,
+  bibliography: true,
   revision: true,
   createdAt: true,
   updatedAt: true,
 } as const;
 
 type Row = Prisma.DocumentGetPayload<{ select: typeof FULL }>;
-
-/** Stored settings are re-validated: rows written by older versions open with defaults. */
-function readSettings(value: unknown): DocumentSettings {
-  const parsed = documentSettingsSchema.safeParse(value);
-  return parsed.success ? parsed.data : DEFAULT_SETTINGS;
-}
 
 const titleSourceOf = (source: TitleSource) =>
   source === TitleSource.MANUAL ? "manual" : "content";
@@ -66,6 +61,7 @@ function toRecord(row: Row): DocumentRecord {
     templateId: settings.templateId,
     markdown: row.markdown,
     settings,
+    bibliography: row.bibliography,
     revision: row.revision,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -115,6 +111,7 @@ export async function getDocument(
 export interface NewDocument {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  readonly bibliography?: string;
   readonly folderId?: string | null;
   /** A name for it; omitted, the title comes from the text. */
   readonly title?: string | null;
@@ -146,6 +143,7 @@ export async function createDocument(
       folderId,
       markdown: input.markdown,
       settings: input.settings,
+      bibliography: input.bibliography ?? "",
       title: manual ? input.title!.trim() : deriveTitle(input.markdown),
       titleSource: manual ? TitleSource.MANUAL : TitleSource.CONTENT,
     },
@@ -157,6 +155,8 @@ export async function createDocument(
 export interface ContentChange {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  /** Sent only when it changed; absent, the stored one stays. */
+  readonly bibliography?: string;
   /** The revision the change was made on. */
   readonly baseRevision: number;
 }
@@ -174,59 +174,72 @@ export type SaveResult =
 /**
  * Saves new content, but only on top of the revision it was edited from. When another
  * tab or device saved first, the change is refused rather than overwriting that work.
+ * Before it writes, the stored state may be kept as a version (see versions.ts).
  */
 export async function saveDocumentContent(
   ownerId: string,
   id: string,
   change: ContentChange,
 ): Promise<SaveResult> {
-  const current = await db().document.findFirst({
-    where: { id, ownerId },
-    select: { titleSource: true, title: true },
-  });
-  if (!current) return { ok: false, reason: "not-found" };
+  return db().$transaction(async (tx) => {
+    const current = await tx.document.findFirst({
+      where: { id, ownerId },
+      select: { titleSource: true, title: true, revision: true },
+    });
+    if (!current) return { ok: false, reason: "not-found" } as const;
 
-  const title =
-    current.titleSource === TitleSource.MANUAL
-      ? current.title
-      : deriveTitle(change.markdown);
-  const updated = await db().document.updateManyAndReturn({
-    where: { id, ownerId, revision: change.baseRevision },
-    data: {
-      markdown: change.markdown,
-      settings: change.settings,
-      title,
-      revision: { increment: 1 },
-    },
-    select: { revision: true, title: true, updatedAt: true },
-  });
-  const row = updated[0];
-  if (row) return { ok: true, ...row };
+    const title =
+      current.titleSource === TitleSource.MANUAL
+        ? current.title
+        : deriveTitle(change.markdown);
+    const writes = current.revision === change.baseRevision;
+    if (writes) await keepVersionIfDue(tx, id);
 
-  const latest = await db().document.findFirst({
-    where: { id, ownerId },
-    select: {
-      revision: true,
-      markdown: true,
-      settings: true,
-      title: true,
-      updatedAt: true,
-    },
+    const updated = writes
+      ? await tx.document.updateManyAndReturn({
+          where: { id, ownerId, revision: change.baseRevision },
+          data: {
+            markdown: change.markdown,
+            settings: change.settings,
+            ...(change.bibliography === undefined
+              ? {}
+              : { bibliography: change.bibliography }),
+            title,
+            revision: { increment: 1 },
+          },
+          select: { revision: true, title: true, updatedAt: true },
+        })
+      : [];
+    const row = updated[0];
+    if (row) return { ok: true, ...row } as const;
+
+    const latest = await tx.document.findFirst({
+      where: { id, ownerId },
+      select: {
+        revision: true,
+        markdown: true,
+        settings: true,
+        bibliography: true,
+        title: true,
+        updatedAt: true,
+      },
+    });
+    if (!latest) return { ok: false, reason: "not-found" } as const;
+    // The same content saved twice, say by a page that was reloaded while its last
+    // save was on the way, is no conflict: the server already has it.
+    const alreadyStored =
+      latest.markdown === change.markdown &&
+      settingsKey(readSettings(latest.settings)) === settingsKey(change.settings) &&
+      (change.bibliography === undefined || latest.bibliography === change.bibliography);
+    return alreadyStored
+      ? ({
+          ok: true,
+          revision: latest.revision,
+          title: latest.title,
+          updatedAt: latest.updatedAt,
+        } as const)
+      : ({ ok: false, reason: "conflict", revision: latest.revision } as const);
   });
-  if (!latest) return { ok: false, reason: "not-found" };
-  // The same content saved twice, say by a page that was reloaded while its last save
-  // was on the way, is no conflict: the server already has it.
-  const alreadyStored =
-    latest.markdown === change.markdown &&
-    settingsKey(readSettings(latest.settings)) === settingsKey(change.settings);
-  return alreadyStored
-    ? {
-        ok: true,
-        revision: latest.revision,
-        title: latest.title,
-        updatedAt: latest.updatedAt,
-      }
-    : { ok: false, reason: "conflict", revision: latest.revision };
 }
 
 export type UpdateResult =
@@ -297,6 +310,7 @@ export async function duplicateDocument(
         folderId: original.folderId,
         markdown: original.markdown,
         settings: original.settings ?? Prisma.JsonNull,
+        bibliography: original.bibliography,
         title: `${original.title}${COPY_SUFFIX}`,
         titleSource: TitleSource.MANUAL,
         assets: { create: original.assets },

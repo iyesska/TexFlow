@@ -64,6 +64,7 @@ interface CompileForm {
   readonly images: CompileImage[];
   readonly settings: DocumentSettings;
   readonly documentId: string | null;
+  readonly bibliography: string;
 }
 
 async function readForm(
@@ -94,6 +95,10 @@ async function readForm(
   const documentId = readDocumentId(form.get(COMPILE_FIELDS.documentId));
   if (documentId === undefined) return "invalid";
 
+  const bibliography = form.get(COMPILE_FIELDS.bibliography) ?? "";
+  if (typeof bibliography !== "string") return "invalid";
+  if (bibliography.length > LIMITS.maxBibliographyLength) return "too-large";
+
   const files = form.getAll(COMPILE_FIELDS.image);
   if (files.length > ASSET_LIMITS.maxPerDocument) return "invalid";
   const images: CompileImage[] = [];
@@ -103,7 +108,7 @@ async function readForm(
       return "invalid";
     images.push(image);
   }
-  return { markdown, images, settings, documentId };
+  return { markdown, images, settings, documentId, bibliography };
 }
 
 /**
@@ -143,6 +148,7 @@ export async function POST(request: Request): Promise<Response> {
       cacheDir: env.TECTONIC_CACHE_DIR,
     },
     request.signal,
+    form.bibliography,
   );
   if (!result.ok) return respond(result);
 

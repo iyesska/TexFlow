@@ -8,6 +8,7 @@ import { useCompilation } from "@/features/compilation/hooks/use-compilation";
 import { ConversionAlert } from "@/features/conversion/components/conversion-alert";
 import { ConversionStatusBar } from "@/features/conversion/components/conversion-status-bar";
 import {
+  useDocumentBibliography,
   useDocumentMarkdown,
   useDocumentSettings,
 } from "@/features/document/hooks/use-document";
@@ -62,7 +63,12 @@ export function PreviewWorkbench() {
   const { mode } = compilation;
   // The quick preview only works while it is the one on screen.
   const settings = useDocumentSettings();
-  const preview = usePreviewHtml(mode !== "quick" ? null : markdown, settings);
+  const bibliography = useDocumentBibliography();
+  const preview = usePreviewHtml(
+    mode !== "quick" ? null : markdown,
+    settings,
+    bibliography,
+  );
   const images = useAssets();
 
   // Opening the PDF view compiles the document if what is there is out of date.

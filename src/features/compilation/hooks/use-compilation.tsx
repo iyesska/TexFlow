@@ -14,11 +14,14 @@ import {
 import type { CompileFailure, Diagnostic } from "@/contracts/compilation";
 import { imagesUsedBy } from "@/documents/used-images";
 import { useAssetLibrary, useAssets } from "@/features/assets/hooks/use-assets";
+import { bibliographyFor } from "@/documents/bibtex";
 import {
+  useDocumentBibliography,
   useDocumentMarkdown,
   useDocumentSession,
   useDocumentSettings,
 } from "@/features/document/hooks/use-document";
+import { fingerprint } from "@/lib/fingerprint";
 import { settingsKey } from "@/templates/settings";
 
 import {
@@ -68,6 +71,7 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
   const library = useAssetLibrary();
   const markdown = useDocumentMarkdown();
   const settings = useDocumentSettings();
+  const bibliography = useDocumentBibliography();
   const assets = useAssets();
   const [state, setState] = useState(INITIAL_STATE);
   const [mode, setMode] = useState<PreviewMode>("quick");
@@ -80,17 +84,22 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     inFlight.current = controller;
 
-    const { markdown: text, settings: design } = session.getSnapshot();
+    const { markdown: text, settings: design, bibliography } = session.getSnapshot();
     const images = imagesUsedBy(text, library.getSnapshot().values());
     const key = compilationKey(
       text,
       images.map(({ name }) => name),
-      settingsKey(design),
+      `${settingsKey(design)}:${fingerprint(bibliography)}`,
     );
 
     setState((current) => ({ ...current, isCompiling: true }));
     const outcome = await requestCompilation(
-      { markdown: text, settings: design, documentId: session.id },
+      {
+        markdown: text,
+        settings: design,
+        documentId: session.id,
+        bibliography: bibliographyFor(text, bibliography),
+      },
       controller.signal,
     );
     if (controller.signal.aborted) return null;
@@ -120,12 +129,12 @@ export function CompilationProvider({ children }: { children: ReactNode }) {
     const currentKey = compilationKey(
       markdown,
       imagesUsedBy(markdown, assets.values()).map(({ name }) => name),
-      settingsKey(settings),
+      `${settingsKey(settings)}:${fingerprint(bibliography)}`,
     );
     const isStale = state.compiledKey !== currentKey;
     const hasProblems = state.error !== null && !state.isCompiling && !isStale;
     return { ...state, isStale, hasProblems, mode, setMode, compile };
-  }, [assets, compile, markdown, mode, settings, state]);
+  }, [assets, bibliography, compile, markdown, mode, settings, state]);
 
   return <CompilationContext value={value}>{children}</CompilationContext>;
 }

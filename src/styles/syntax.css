@@ -40,6 +40,11 @@
   color: var(--syntax-link);
 }
 
+/* A citation of a reference: @clave. */
+.tok-citation {
+  color: var(--syntax-name);
+}
+
 .tok-url {
   text-decoration: underline;
   text-decoration-color: oklch(from var(--syntax-link) l c h / 0.4);

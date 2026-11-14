@@ -16,6 +16,7 @@ const key = (documentId: string) => `texflow:pending:${documentId}`;
 const pendingSchema = z.object({
   markdown: z.string(),
   settings: documentSettingsSchema,
+  bibliography: z.string().optional(),
   baseRevision: z.number().int().min(0),
 });
 
@@ -57,6 +58,7 @@ export function forgetPendingWork(storage: Storage, documentId: string): void {
 export function differsFrom(change: ContentChange, snapshot: DocumentSnapshot): boolean {
   return (
     change.markdown !== snapshot.markdown ||
-    settingsKey(change.settings) !== settingsKey(snapshot.settings)
+    settingsKey(change.settings) !== settingsKey(snapshot.settings) ||
+    (change.bibliography !== undefined && change.bibliography !== snapshot.bibliography)
   );
 }

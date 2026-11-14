@@ -18,7 +18,7 @@ en verde y esta tabla actualizada.
 | 5    | Compilación PDF con Tectonic y exportaciones                   | Completada |
 | 6    | Plantillas documentales                                        | Completada |
 | 7    | Usuarios (Auth.js) y documentos (PostgreSQL + Prisma)          | Completada |
-| 8    | Bibliografía BibTeX, historial de versiones, onboarding        | Pendiente  |
+| 8    | Bibliografía BibTeX, historial de versiones, onboarding        | Completada |
 
 ### Qué funciona hoy
 
@@ -145,6 +145,40 @@ Cuentas y documentos (fase 7):
 - Cada consulta va limitada al propietario: los documentos de otra cuenta no existen
   para quien no es su dueño.
 
+Bibliografía, historial y ayuda (fase 8):
+
+- Panel **Referencias**: la bibliografía del documento en BibTeX. Se añade y edita con un
+  formulario por tipo de obra (artículo, libro, capítulo, actas, tesis, informe, web…),
+  que propone la clave a partir del autor, el año y el título; se importa un `.bib`
+  (las claves repetidas no se duplican), se exporta, o se edita el BibTeX a mano.
+- Citas con la sintaxis de Pandoc: `[@clave]`, `[@clave, p. 12]`, `@clave` y
+  `[-@clave]`. Al escribir `@` el editor ofrece las claves con autor, año y título; el
+  botón **Citar** de cada referencia la inserta en el cursor, y `/citar` también.
+- El panel avisa de los errores del BibTeX, con su línea, y de las claves que el texto
+  cita y la bibliografía no tiene, con un botón para añadirlas.
+- La vista previa, el LaTeX y el PDF formatean las citas con citeproc y añaden la lista
+  de referencias al final, titulada «Referencias» o «References» según el idioma. Tres
+  estilos, en el panel **Diseño**: Chicago (autor y año), APA 7.ª e IEEE (numérico).
+  Solo viaja al servidor la parte de la bibliografía que el texto cita.
+- La exportación del proyecto incluye el `.bib`.
+- **Historial** de versiones: mientras escribes se guarda una versión como mucho cada
+  diez minutos, y se puede guardar una con nombre. Cada versión se compara con el texto
+  actual, línea a línea y con las palabras cambiadas marcadas, o se lee entera.
+- Restaurar una versión devuelve el texto, el diseño y las referencias. Antes se guarda
+  lo que había, así que se puede deshacer desde el aviso o desde el historial.
+- Si otra pestaña guardó antes, la versión que se descarta al resolver el conflicto
+  queda en el historial: ya no se pierde.
+- **Paleta de comandos** (`Ctrl/Cmd+K`, o `Ctrl/Cmd+P` desde el editor): busca entre
+  todas las acciones, sin distinguir tildes ni mayúsculas: guardar, insertar bloques,
+  compilar, exportar, paneles, plantillas, estilo de citas, tema y ayuda.
+- **Atajos de teclado**: la tecla `?` (fuera del texto) los muestra todos, con las teclas
+  de cada sistema.
+- **Primeros pasos**: una guía con seis pasos (escribir, elegir plantilla, citar,
+  compilar, exportar y usar la paleta) que se marcan solos al hacerlos, cada uno con un
+  botón para hacerlo ya. Se puede ocultar y recuperar desde el menú de vista.
+- En el móvil, Diseño, Referencias e Historial pasan al menú de vista para que el título
+  del documento quepa en la barra.
+
 Límites actuales:
 
 - La vista rápida es una aproximación continua, sin saltos de página. La composición
@@ -156,8 +190,14 @@ Límites actuales:
   ya lo permite).
 - No hay recuperación de contraseña ni verificación del correo, y los documentos no se
   comparten entre cuentas.
-- Eliminar un documento es definitivo: no hay papelera. El historial de versiones llega
-  en la fase 8.
+- Eliminar un documento es definitivo: no hay papelera, y con él se van sus versiones.
+- El historial conserva las 100 versiones automáticas más recientes de cada documento;
+  las versiones con nombre se conservan siempre. Las versiones no se renombran ni se
+  borran desde la interfaz.
+- Tres estilos de cita (Chicago autor-año, APA e IEEE). Otro estilo CSL requiere
+  añadirlo a `pandoc/csl/`.
+- El progreso de «Primeros pasos» se guarda en el navegador: en otro dispositivo empieza
+  de cero.
 - Los límites de peticiones se cuentan en la memoria del proceso: con varios procesos del
   servidor, cada uno lleva su cuenta.
 - Los paquetes LaTeX disponibles son los que usa la conversión. Un `\usepackage` de
@@ -168,19 +208,39 @@ Límites actuales:
 
 ### Atajos de teclado
 
-| Acción                          | Windows y Linux           | macOS               |
-| ------------------------------- | ------------------------- | ------------------- |
-| Mostrar u ocultar un panel      | `Alt+1`, `Alt+2`, `Alt+3` | `⌥1`, `⌥2`, `⌥3`    |
-| Mostrar los tres paneles        | `Alt+0`                   | `⌥0`                |
-| Guardar                         | `Ctrl+S`                  | `⌘S`                |
-| Compilar y ver el PDF           | `Ctrl+Intro`              | `⌘Intro`            |
-| Negrita, cursiva                | `Ctrl+B`, `Ctrl+I`        | `⌘B`, `⌘I`          |
-| Código en línea, enlace         | `Ctrl+E`, `Ctrl+K`        | `⌘E`, `⌘K`          |
-| Lista numerada, lista, cita     | `Ctrl+Shift+7`, `8`, `9`  | `⌘⇧7`, `8`, `9`     |
-| Título, sección, subsección     | `Ctrl+Shift+1`, `2`, `3`  | `⌘⌥1`, `2`, `3`     |
-| Buscar en el documento          | `Ctrl+F`                  | `⌘F`                |
-| Buscar en la biblioteca         | `/`                       | `/`                 |
-| Salir del editor con el teclado | `Esc` y luego `Tab`       | `Esc` y luego `Tab` |
+| Acción                          | Windows y Linux                  | macOS                    |
+| ------------------------------- | -------------------------------- | ------------------------ |
+| Mostrar u ocultar un panel      | `Alt+1`, `Alt+2`, `Alt+3`        | `⌥1`, `⌥2`, `⌥3`         |
+| Mostrar los tres paneles        | `Alt+0`                          | `⌥0`                     |
+| Guardar                         | `Ctrl+S`                         | `⌘S`                     |
+| Compilar y ver el PDF           | `Ctrl+Intro`                     | `⌘Intro`                 |
+| Negrita, cursiva                | `Ctrl+B`, `Ctrl+I`               | `⌘B`, `⌘I`               |
+| Código en línea, enlace         | `Ctrl+E`, `Ctrl+K`               | `⌘E`, `⌘K`               |
+| Lista numerada, lista, cita     | `Ctrl+Shift+7`, `8`, `9`         | `⌘⇧7`, `8`, `9`          |
+| Título, sección, subsección     | `Ctrl+Shift+1`, `2`, `3`         | `⌘⌥1`, `2`, `3`          |
+| Buscar en el documento          | `Ctrl+F`                         | `⌘F`                     |
+| Buscar en la biblioteca         | `/`                              | `/`                      |
+| Paleta de comandos              | `Ctrl+K` (`Ctrl+P` en el editor) | `⌘K` (`⌘P` en el editor) |
+| Ver todos los atajos            | `?`, fuera del texto             | `?`, fuera del texto     |
+| Citar (en el editor)            | `@` y la clave                   | `@` y la clave           |
+| Salir del editor con el teclado | `Esc` y luego `Tab`              | `Esc` y luego `Tab`      |
+
+En el editor, `Ctrl/Cmd+K` inserta un enlace, como en los procesadores de texto; por eso
+la paleta se abre allí con `Ctrl/Cmd+P`.
+
+## Capturas
+
+En [`docs/screenshots`](docs/screenshots), una o más por fase. De la fase 8:
+
+- [Referencias](docs/screenshots/fase-8-referencias.png): el panel y las claves que el
+  editor ofrece tras `@`.
+- [Citas](docs/screenshots/fase-8-citas.png): las citas formateadas y la lista de
+  referencias en la vista previa.
+- [Historial](docs/screenshots/fase-8-historial.png): una versión comparada con el texto
+  actual, con las palabras cambiadas marcadas.
+- [Paleta de comandos](docs/screenshots/fase-8-paleta.png),
+  [atajos de teclado](docs/screenshots/fase-8-atajos.png) y
+  [primeros pasos](docs/screenshots/fase-8-primeros-pasos.png).
 
 ## Stack
 
@@ -197,6 +257,8 @@ Límites actuales:
 | PDF           | Tectonic                                            | Fase 5 |
 | Persistencia  | PostgreSQL, Prisma                                  | Fase 7 |
 | Autenticación | Auth.js                                             | Fase 7 |
+| Citas         | citeproc de Pandoc con estilos CSL                  | Fase 8 |
+| Comparación   | jsdiff (`diff`), para el historial                  | Fase 8 |
 
 ## Requisitos
 
@@ -362,7 +424,11 @@ src/
 │  │  ├─ model/         Petición de compilación e imágenes que usa el documento
 │  │  ├─ hooks/         PDF compartido por la vista previa y la exportación
 │  │  └─ components/    Lista de problemas y atajo de compilar
-│  ├─ export/           Menú Exportar y archivo ZIP del proyecto
+│  ├─ export/           Menú Exportar, acciones de exportación y ZIP del proyecto
+│  ├─ bibliography/     Panel Referencias: lista, formulario, importación y citas
+│  ├─ history/          Historial: comparación, línea temporal y restauración
+│  ├─ commands/         Paleta de comandos, su búsqueda y el diálogo de atajos
+│  ├─ onboarding/       Guía de primeros pasos y su progreso
 │  ├─ templates/        Panel Diseño
 │  │  ├─ model/         Estilo de la vista previa según la plantilla, y rótulos
 │  │  ├─ hooks/         Aplicar plantillas y cambiar ajustes, con validación
@@ -385,14 +451,15 @@ src/
 │  ├─ templates/        Opciones de Pandoc y preámbulo LaTeX de cada diseño
 │  └─ http/             Lectura segura de cuerpos, sesión, origen y respuestas de error
 ├─ contracts/           Esquemas de la API compartidos por cliente y servidor
-├─ documents/           Título, documento de ejemplo e imágenes usadas: cliente y servidor
+├─ documents/           Título, documento de ejemplo, imágenes usadas y BibTeX (lectura,
+│                       escritura y claves citadas): cliente y servidor
 ├─ templates/           Plantillas y ajustes de diseño, compartidos por cliente y servidor
 ├─ hooks/               Hooks compartidos (atajos, media queries)
 ├─ config/              Entorno validado, atajos, datos del sitio
 ├─ lib/                 Utilidades puras y piezas de CodeMirror compartidas
 └─ styles/              Tokens de diseño y colores de sintaxis
 prisma/                 Esquema, migraciones y datos de demostración
-pandoc/                 Filtro, plantilla y documentos de calentamiento para Pandoc y LaTeX
+pandoc/                 Filtro, plantilla, estilos CSL y documentos de calentamiento
 scripts/                Instalación de Tectonic y descarga de sus paquetes
 docker/                 Imagen y compose de despliegue
 e2e/                    Tests Playwright
@@ -512,27 +579,37 @@ las guardadas que el Markdown menciona.
 
 ### Documentos, carpetas e imágenes
 
-| Método y ruta                            | Qué hace                                                           |
-| ---------------------------------------- | ------------------------------------------------------------------ |
-| `GET /api/documents`                     | Documentos (del último cambio al más antiguo) y carpetas           |
-| `POST /api/documents`                    | Crea un documento: `{ markdown?, settings?, folderId?, title? }`   |
-| `GET /api/documents/:id`                 | El documento con su texto, diseño y revisión                       |
-| `PATCH /api/documents/:id`               | Guarda, renombra o mueve, según `action` (abajo)                   |
-| `DELETE /api/documents/:id`              | Elimina el documento y sus imágenes                                |
-| `POST /api/documents/:id/duplicate`      | Copia el documento con su diseño y sus imágenes                    |
-| `GET /api/documents/:id/assets`          | Imágenes del documento                                             |
-| `POST /api/documents/:id/assets`         | Sube una imagen (`multipart`, campo `file`); el servidor la nombra |
-| `GET /api/documents/:id/assets/:name`    | La imagen, con `ETag`                                              |
-| `DELETE /api/documents/:id/assets/:name` | Elimina una imagen                                                 |
-| `GET /api/folders`                       | Carpetas, con cuántos documentos tiene cada una                    |
-| `POST /api/folders`                      | Crea una carpeta: `{ name }`                                       |
-| `PATCH /api/folders/:id`                 | Renombra una carpeta: `{ name }`                                   |
-| `DELETE /api/folders/:id`                | Elimina una carpeta; sus documentos quedan fuera de carpetas       |
+| Método y ruta                                   | Qué hace                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `GET /api/documents`                            | Documentos (del último cambio al más antiguo) y carpetas           |
+| `POST /api/documents`                           | Crea un documento: `{ markdown?, settings?, folderId?, title? }`   |
+| `GET /api/documents/:id`                        | El documento con su texto, diseño y revisión                       |
+| `PATCH /api/documents/:id`                      | Guarda, renombra o mueve, según `action` (abajo)                   |
+| `DELETE /api/documents/:id`                     | Elimina el documento y sus imágenes                                |
+| `POST /api/documents/:id/duplicate`             | Copia el documento con su diseño y sus imágenes                    |
+| `GET /api/documents/:id/assets`                 | Imágenes del documento                                             |
+| `POST /api/documents/:id/assets`                | Sube una imagen (`multipart`, campo `file`); el servidor la nombra |
+| `GET /api/documents/:id/assets/:name`           | La imagen, con `ETag`                                              |
+| `DELETE /api/documents/:id/assets/:name`        | Elimina una imagen                                                 |
+| `GET /api/folders`                              | Carpetas, con cuántos documentos tiene cada una                    |
+| `POST /api/folders`                             | Crea una carpeta: `{ name }`                                       |
+| `PATCH /api/folders/:id`                        | Renombra una carpeta: `{ name }`                                   |
+| `DELETE /api/folders/:id`                       | Elimina una carpeta; sus documentos quedan fuera de carpetas       |
+| `GET /api/documents/:id/versions`               | Versiones del documento, de la más reciente a la más antigua       |
+| `POST /api/documents/:id/versions`              | Guarda una versión con nombre: `{ label, content? }`               |
+| `GET /api/documents/:id/versions/:vid`          | Una versión con su texto, diseño y bibliografía                    |
+| `POST /api/documents/:id/versions/:vid/restore` | Restaura una versión: `{ baseRevision }`                           |
 
 `PATCH /api/documents/:id` admite tres cambios:
 
 ```json
-{ "action": "save", "markdown": "…", "settings": { "…": "…" }, "baseRevision": 4 }
+{
+  "action": "save",
+  "markdown": "…",
+  "settings": { "…": "…" },
+  "bibliography": "…",
+  "baseRevision": 4
+}
 ```
 
 ```json
@@ -545,7 +622,18 @@ las guardadas que el Markdown menciona.
 
 Un guardado solo se aplica sobre la revisión de la que partió: si el documento cambió
 desde entonces, responde `409` con la revisión actual y no escribe nada. Volver a enviar
-lo que ya está guardado no es un conflicto. `title: null` hace que el nombre vuelva a
+lo que ya está guardado no es un conflicto. `bibliography` es opcional: el editor solo lo
+envía cuando cambió. Antes de un guardado se conserva el estado anterior como versión
+automática si no hay ninguna de los últimos diez minutos.
+
+Una restauración, como un guardado, se aplica sobre la revisión que se estaba viendo
+(`409` si cambió) y conserva antes el estado que reemplaza; responde el documento
+restaurado y esa versión (`kept`), con la que se deshace. Una versión con nombre guarda
+el documento tal como está, o el `content` que se envíe (`{ markdown, settings,
+bibliography }`): así se conserva lo que una pestaña no pudo guardar.
+
+`/api/convert`, `/api/preview` y `/api/compile` aceptan además `bibliography` (BibTeX,
+hasta 300 000 caracteres) para formatear las citas. `title: null` hace que el nombre vuelva a
 seguir al título del texto; `folderId: null` saca el documento de su carpeta.
 
 Los errores tienen la forma `{ "ok": false, "error": { "code", "message" } }`, con estos
@@ -563,6 +651,8 @@ ejecutar nada aunque se abran solas.
 - [Arquitectura](docs/architecture.md): capas, flujo de conversión, modelo de seguridad y
   plan por fases.
 - [Sistema visual](docs/design-system.md): tokens, tipografía y reglas de la interfaz.
+- [Estilos de cita](pandoc/csl/README.md): procedencia y licencia (CC BY-SA 3.0) de los
+  estilos CSL de APA e IEEE.
 
 ## Calidad
 
@@ -570,6 +660,8 @@ ejecutar nada aunque se abran solas.
 - La integración continua (`.github/workflows/ci.yml`) ejecuta lint, tipos, formato, tests
   unitarios, build y tests end-to-end.
 - Una regla de ESLint impide que el código de cliente importe módulos de `src/server`.
+- Cada fase se revisa con [aislop](https://www.npmjs.com/package/aislop) (`npx aislop
+scan`): 96/100 y ningún error al cerrar la fase 8.
 
 ## Despliegue
 

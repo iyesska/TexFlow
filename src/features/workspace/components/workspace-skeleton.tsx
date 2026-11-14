@@ -12,7 +12,8 @@ export function WorkspaceSkeleton() {
       aria-busy="true"
       aria-label="Cargando el espacio de trabajo"
     >
-      <div className="flex h-12 shrink-0 items-center px-3">
+      {/* As tall as the top bar: two rows until the pane switcher fits beside it. */}
+      <div className="flex h-22.5 shrink-0 items-start px-3 pt-3 xl:h-12 xl:items-center xl:pt-0">
         <Wordmark />
       </div>
       <div className="flex min-h-0 flex-1 gap-1.5 px-1.5 pb-1.5">

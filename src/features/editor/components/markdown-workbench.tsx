@@ -1,9 +1,14 @@
 "use client";
 
 import type { EditorView } from "@codemirror/view";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useDocumentSession } from "@/features/document/hooks/use-document";
+import { authorsLabel, entryYear, plainText, scanBibtex } from "@/documents/bibtex";
+import {
+  useDocumentBibliography,
+  useDocumentSession,
+} from "@/features/document/hooks/use-document";
+import { minimalChange } from "@/lib/text-diff";
 
 import type { CursorPosition } from "../codemirror/extensions";
 import { useImageInsertion } from "../hooks/use-image-insertion";
@@ -18,6 +23,18 @@ export function MarkdownWorkbench() {
   const [view, setView] = useState<EditorView | null>(null);
   const [cursor, setCursor] = useState<CursorPosition | null>(null);
   const insertImages = useImageInsertion(view);
+  const bibliography = useDocumentBibliography();
+  const citations = useMemo(
+    () =>
+      scanBibtex(bibliography).entries.map((entry) => ({
+        key: entry.key,
+        label: [authorsLabel(entry), entryYear(entry) && `(${entryYear(entry)})`]
+          .filter(Boolean)
+          .join(" "),
+        title: plainText(entry.fields.title ?? ""),
+      })),
+    [bibliography],
+  );
   /** The last text the editor itself handed to the session. */
   const written = useRef(initialMarkdown);
 
@@ -30,16 +47,16 @@ export function MarkdownWorkbench() {
   );
 
   // Text can also change from outside the editor: unsaved work taken back after a
-  // reload, for one. The editor then shows it.
+  // reload, or a version restored from the history. The editor then shows it.
   useEffect(() => {
     if (!view) return;
     const follow = () => {
       const { markdown } = session.getSnapshot();
       if (markdown === written.current || markdown === view.state.doc.toString()) return;
       written.current = markdown;
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: markdown },
-      });
+      // Only the part that differs, so the cursor stays put when it is elsewhere.
+      const change = minimalChange(view.state.doc.toString(), markdown);
+      if (change) view.dispatch({ changes: change });
     };
     follow();
     return session.subscribe(follow);
@@ -55,6 +72,7 @@ export function MarkdownWorkbench() {
           onCursorChange={setCursor}
           onImageFiles={(files, position) => void insertImages(files, position)}
           onViewChange={setView}
+          citations={() => citations}
         />
       </div>
       <EditorStatusBar cursor={cursor} />

@@ -44,7 +44,7 @@ async function OpenWorkspace({ params }: Pick<Props, "params">) {
       key={`${opened.document.id}:${opened.document.updatedAt}`}
       document={opened.document}
       assets={opened.assets}
-      user={{ name: opened.user.name, email: opened.user.email }}
+      user={{ id: opened.user.id, name: opened.user.name, email: opened.user.email }}
       initialLayout={parseLayout(cookieStore.get(LAYOUT_COOKIE)?.value)}
     />
   );

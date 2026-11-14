@@ -15,7 +15,11 @@ import type { DocumentDto } from "@/contracts/documents";
 import { deriveTitle } from "@/documents/title";
 import type { DocumentSettings } from "@/templates/settings";
 
-import { canSaveWhileClosing, createApiDocumentStore } from "../model/api-document-store";
+import {
+  canSaveWhileClosing,
+  createApiDocumentStore,
+  openedDocument,
+} from "../model/api-document-store";
 import {
   createDocumentSession,
   type DocumentSession,
@@ -36,12 +40,7 @@ function openSession(document: DocumentDto): DocumentSession {
   return createDocumentSession({
     id: document.id,
     store: createApiDocumentStore(document.id),
-    initial: {
-      markdown: document.markdown,
-      settings: document.settings,
-      revision: document.revision,
-      manualTitle: document.titleSource === "manual" ? document.title : null,
-    },
+    initial: openedDocument(document),
     autosaveDelayMs: AUTOSAVE_DELAY_MS,
   });
 }
@@ -138,6 +137,11 @@ export function useDocumentMarkdown(): string {
 /** The document's design settings. Re-renders when the design changes. */
 export function useDocumentSettings(): DocumentSettings {
   return useSnapshotPart((snapshot) => snapshot.settings);
+}
+
+/** The document's references, as BibTeX. Re-renders when they change. */
+export function useDocumentBibliography(): string {
+  return useSnapshotPart((snapshot) => snapshot.bibliography);
 }
 
 /** The document's title: the name the writer gave it, or its first heading. */

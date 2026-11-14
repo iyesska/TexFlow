@@ -70,13 +70,15 @@ export async function createDocument(
   options: {
     readonly markdown: string;
     readonly settings?: DocumentSettings;
+    readonly bibliography?: string;
     readonly folderId?: string | null;
   },
 ): Promise<string> {
   const id = newId();
   await database().query(
-    `INSERT INTO documents (id, owner_id, folder_id, title, markdown, settings, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, now())`,
+    `INSERT INTO documents
+       (id, owner_id, folder_id, title, markdown, settings, bibliography, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, now())`,
     [
       id,
       ownerId,
@@ -84,6 +86,7 @@ export async function createDocument(
       deriveTitle(options.markdown),
       options.markdown,
       JSON.stringify(options.settings ?? DEFAULT_SETTINGS),
+      options.bibliography ?? "",
     ],
   );
   return id;

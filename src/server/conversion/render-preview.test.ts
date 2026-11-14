@@ -106,6 +106,22 @@ describe("preview HTML", () => {
     expect(english.ok && english.html).toContain('<h2 class="toc-title">Contents</h2>');
   });
 
+  it("formats citations and lists the references, with prefixed ids", async () => {
+    const result = await renderPreviewHtml(
+      {
+        markdown: "Según [@perez2020].",
+        settings: DEFAULT_SETTINGS,
+        bibliography: String.raw`@book{perez2020, author = {P{\'e}rez, Ana}, title = {Series}, year = {2020}}`,
+      },
+      "pandoc",
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.html).toContain('href="#pv-ref-perez2020"');
+    expect(result.html).toContain('id="pv-ref-perez2020"');
+    expect(result.html).toContain(">Referencias</h1>");
+    expect(result.warnings).toEqual([]);
+  });
+
   it("reports a YAML error like the LaTeX conversion does", async () => {
     const result = await renderPreviewHtml(
       { markdown: "---\ntitle: [a\n---\n", settings: DEFAULT_SETTINGS },

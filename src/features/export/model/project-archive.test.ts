@@ -27,6 +27,17 @@ describe("buildProjectArchive", () => {
     expect(files["mi-tesis/a.png"]).toEqual(new Uint8Array([1, 2, 3]));
   });
 
+  it("includes the references as a .bib file when there are any", () => {
+    const bibliography = "@book{a, title={A}}";
+    const files = unzipSync(buildProjectArchive({ ...base, bibliography }));
+    expect(strFromU8(files["mi-tesis/mi-tesis.bib"] ?? new Uint8Array())).toBe(
+      bibliography,
+    );
+    expect(
+      Object.keys(unzipSync(buildProjectArchive({ ...base, bibliography: " " }))),
+    ).not.toContain("mi-tesis/mi-tesis.bib");
+  });
+
   it("includes the PDF when there is one", () => {
     const pdf = new Uint8Array([37, 80, 68, 70]);
     const files = unzipSync(buildProjectArchive({ ...base, pdf }));

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
+  CITATION_STYLES,
   COVER_STYLES,
   FONT_SIZES,
   FONTS,
@@ -20,6 +21,7 @@ import {
   LINE_SPACINGS,
   MARGIN_LIMITS,
   PAPER_SIZES,
+  type CitationStyle,
   type DocumentSettings,
   type FontId,
   type FooterStyle,
@@ -29,6 +31,7 @@ import {
 
 import type { Design } from "../hooks/use-design";
 import {
+  CITATION_STYLE_LABELS,
   COVER_LABELS,
   FONT_LABELS,
   FOOTER_LABELS,
@@ -174,6 +177,10 @@ const FONT_NAMES = Object.fromEntries(
   ]),
 ) as Record<FontId, ReactNode>;
 
+const CITATION_STYLE_NAMES = Object.fromEntries(
+  CITATION_STYLES.map((style) => [style, CITATION_STYLE_LABELS[style].name]),
+) as Record<CitationStyle, string>;
+
 /** Every design setting of the document, grouped as a typesetter would think of them. */
 export function DesignSettings({ design }: { design: Design }) {
   const { settings, update } = design;
@@ -311,6 +318,23 @@ export function DesignSettings({ design }: { design: Design }) {
           checked={settings.tableOfContents}
           onChange={(tableOfContents) => set({ tableOfContents })}
         />
+      </DesignSection>
+
+      <DesignSection title="Referencias">
+        <Field
+          label="Estilo de las citas"
+          hint={`Una cita se escribe así: ${CITATION_STYLE_LABELS[settings.citationStyle].example}. Al cambiar de plantilla se mantiene.`}
+        >
+          {(ids) => (
+            <OptionSelect<CitationStyle>
+              ids={ids}
+              value={settings.citationStyle}
+              options={CITATION_STYLES}
+              labels={CITATION_STYLE_NAMES}
+              onChange={(citationStyle) => set({ citationStyle })}
+            />
+          )}
+        </Field>
       </DesignSection>
     </div>
   );

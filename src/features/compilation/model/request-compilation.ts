@@ -32,6 +32,8 @@ export interface CompileRequest {
   readonly settings: DocumentSettings;
   /** The stored document whose images the Markdown refers to. */
   readonly documentId: string;
+  /** The BibTeX entries the Markdown cites; empty when it cites none. */
+  readonly bibliography?: string;
 }
 
 /**
@@ -47,6 +49,7 @@ export async function requestCompilation(
   form.set(COMPILE_FIELDS.markdown, request.markdown);
   form.set(COMPILE_FIELDS.settings, JSON.stringify(request.settings));
   form.set(COMPILE_FIELDS.documentId, request.documentId);
+  if (request.bibliography) form.set(COMPILE_FIELDS.bibliography, request.bibliography);
 
   let response: Response;
   try {

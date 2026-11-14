@@ -27,7 +27,7 @@ test("lists the account's documents, most recently changed first", async ({
   await expect.poll(() => titles(page)).toEqual(["Segundo", "Primero"]);
   await page.getByRole("link", { name: "Primero" }).click();
   await expect(page).toHaveURL(/\/documents\/[a-z0-9]+$/);
-  await expect(page.getByRole("button", { name: "Primero" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Primero", exact: true })).toBeVisible();
 });
 
 test("welcomes an empty account with the templates to start from", async ({

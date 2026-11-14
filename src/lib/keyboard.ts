@@ -22,7 +22,7 @@ export function matchesCombo(event: ComboEvent, combo: KeyCombo): boolean {
   );
 }
 
-const KEY_NAMES: Readonly<Record<string, string>> = { Enter: "Intro" };
+const KEY_NAMES: Readonly<Record<string, string>> = { Enter: "Intro", Space: "Espacio" };
 
 const baseKey = (combo: KeyCombo) =>
   KEY_NAMES[combo.code] ?? combo.code.replace(/^(Digit|Key)/, "");

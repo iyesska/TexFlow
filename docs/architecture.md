@@ -368,44 +368,124 @@ Las fases 1 a 6 guardaban un único documento en el navegador. La biblioteca lo 
 (`src/features/library/model/local-document.ts`) y ofrece importarlo una vez, con sus
 imágenes de IndexedDB; después lo borra del navegador. La muestra sin tocar no se ofrece.
 
+## Bibliografía, historial y ayuda (fase 8)
+
+### Bibliografía y citas
+
+La bibliografía es un texto BibTeX guardado con el documento (`documents.bibliography`).
+El navegador la lee con un analizador propio y tolerante (`src/documents/bibtex.ts`): da
+las entradas con su posición, las definiciones `@string` y `@preamble`, y los problemas
+con su línea, y sigue leyendo tras un error. Ese mismo módulo extrae las claves que cita
+el Markdown, con las reglas de Pandoc (`@clave`, `[@clave, p. 12]`, `[-@clave]`, sin
+confundir un correo electrónico), y forma `bibliographyFor`: solo las entradas citadas y
+las definiciones que puedan usar. Es lo único que viaja a `/api/convert`,
+`/api/preview` y `/api/compile`, y entra en la clave de las respuestas en caché, así que
+editar una referencia que no se cita no vuelve a convertir nada.
+
+El formulario de referencias escribe BibTeX (`src/documents/bibtex-edit.ts`): escapa
+`& % # _`, equilibra llaves, conserva los campos que no muestra y propone claves como
+`perez2020series`. El panel trabaja sobre ese texto, sin un modelo paralelo que
+sincronizar.
+
+En el servidor, `citationSetup` (`src/server/conversion/citations.ts`) añade a Pandoc
+`--citeproc`, el estilo CSL elegido en el diseño y los metadatos de idioma y del título
+de la lista. La bibliografía entra en el directorio temporal del trabajo como
+`references.bib`, igual que el preámbulo: Pandoc sigue en `--sandbox`, sin red ni
+archivos ajenos. Citeproc resuelve las citas al convertir, así que el LaTeX ya trae el
+texto formateado y Tectonic no necesita BibTeX ni biber.
+
+### Historial de versiones
+
+`document_versions` guarda copias completas (texto, diseño, bibliografía, título y
+revisión) de tres clases: automáticas, con nombre y «antes de restaurar». Un guardado
+conserva, en su misma transacción, el estado que va a reemplazar si no hay una versión
+de los últimos diez minutos: una versión por rato de escritura, no por pulsación. Se
+conservan las 100 automáticas más recientes de cada documento; las demás, siempre.
+
+Restaurar sigue la regla de los guardados: se aplica sobre la revisión que el editor
+estaba viendo (si no, `409`), conserva antes el estado que reemplaza y devuelve esa
+versión, que es como se deshace. En el navegador, la sesión primero guarda lo pendiente,
+pide la restauración con su revisión y, si nada cambió mientras tanto, adopta el
+documento restaurado con `replace`. El editor aplica solo el tramo que difiere
+(`minimalChange`), así que el cursor no salta.
+
+La comparación (`src/features/history/model/compare.ts`) usa jsdiff por líneas, empareja
+las líneas sustituidas para marcar las palabras que cambiaron y pliega los tramos sin
+cambios lejanos. Tiene un tiempo máximo: si dos textos son demasiado distintos, lo dice
+en lugar de bloquear la página.
+
+Al resolver un conflicto entre pestañas, la copia que se descarta se guarda antes como
+versión con nombre. Si se conserva la de esta pestaña, se guarda la del servidor; si se
+carga la otra, se envía el texto de esta pestaña como contenido de la versión. Si eso
+falla, no se descarta nada.
+
+### Paleta, atajos y primeros pasos
+
+Los paneles que se abren desde más de un sitio (Diseño, Referencias, Historial, la
+paleta, los atajos y la guía) guardan su estado en un contexto del espacio de trabajo
+(`use-workspace-panels.tsx`). Así la paleta, el menú de vista y la guía los abren sin
+conocer su implementación.
+
+La paleta reúne las acciones en `useWorkspaceCommands` y las busca por el comienzo de
+las palabras, sin tildes ni mayúsculas, con sinónimos por acción. Ejecuta la acción
+elegida cuando ya se ha cerrado y ha devuelto el foco a donde estaba: una acción que
+abre otro diálogo o escribe en el editor se queda con el foco. Las inserciones abren el
+panel Markdown si hace falta: la caché del editor guarda la orden hasta que el editor
+aparece.
+
+`Ctrl/Cmd+K` abre la paleta salvo cuando el editor ya usó la tecla (para un enlace): el
+atajo comprueba `defaultPrevented`. `Ctrl/Cmd+P` la abre desde cualquier sitio.
+
+La guía de primeros pasos es un almacén pequeño por cuenta en `localStorage`. Los pasos
+del documento (escribir, cambiar el diseño, citar algo que existe, compilar) se marcan
+observando la sesión y la compilación; exportar y abrir la paleta, desde sus propias
+acciones.
+
 ## Decisiones tomadas
 
-| Decisión                                                 | Motivo                                                                                                    |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Una app, no un monorepo                                  | Un solo despliegue; las capas se separan por carpetas y por lint.                                         |
-| Diseño de paneles en cookie                              | El servidor pinta el diseño guardado sin parpadeo.                                                        |
-| Atajos de panel con `Alt`                                | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.                                         |
-| Fuente serif autoalojada                                 | Build reproducible y sin avisos; las demás usan `next/font/google`.                                       |
-| shadcn/ui sobre Radix                                    | Primitivas accesibles cuyo código queda en el repositorio.                                                |
-| `$` no se cierra automáticamente                         | Un `$` de cierre tras un precio convertiría la frase en fórmula.                                          |
-| Cursiva con `_`, no con `*`                              | Evita ambigüedades con los asteriscos de la negrita.                                                      |
-| Título derivado de los metadatos o del primer encabezado | No hay nombre que mantener aparte hasta la gestión documental.                                            |
-| Código con `listings` en el documento completo           | LaTeX idiomático en vez de decenas de macros de resaltado.                                                |
-| Identificadores ASCII (`ascii_identifiers`)              | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.                                                 |
-| Memoria con `+RTS -M`, no con `RLIMIT_AS`                | El runtime de Haskell reserva direcciones que un rlimit rompería.                                         |
-| KaTeX en el cliente, no en el servidor                   | Componer fórmulas es trabajo de CPU sin aislar; que lo haga quien escribe.                                |
-| Sanear con DOMPurify en el cliente                       | Usa el analizador real del navegador, en el punto de inserción.                                           |
-| Imágenes remotas no se muestran                          | El PDF se compila sin red; la vista previa no promete lo que no habrá.                                    |
-| Solo PNG y JPEG                                          | Son los formatos que el motor LaTeX puede incluir.                                                        |
-| Zoom con la propiedad CSS `zoom`                         | Escala también el diseño, así el desplazamiento sigue siendo correcto.                                    |
-| bubblewrap para aislar procesos                          | Aísla archivos, red y procesos sin privilegios de root.                                                   |
-| Sin aislamiento no se compila                            | Fallar cerrado: mejor no ofrecer el PDF que exponer el servidor.                                          |
-| PDF binario en la respuesta, avisos en cabecera          | Evita codificar el PDF en base64 dentro de un JSON.                                                       |
-| Compilar a petición, no en cada pausa                    | Es la operación más cara; la vista rápida ya da respuesta inmediata.                                      |
-| Paquetes LaTeX descargados de antemano                   | Permite compilar sin red.                                                                                 |
-| Plantillas como datos, no como archivos `.latex`         | Un preámbulo generado desde ajustes validados; la plantilla de Pandoc sigue sirviendo para todo lo demás. |
-| Fuentes de la vista rápida = fuentes del PDF             | La vista rápida debe parecerse al resultado; las fuentes se cargan solo si la plantilla las usa.          |
-| Cabecera y pie solo en el PDF                            | En una hoja continua no hay páginas que numerar; mostrarlos sería inventar.                               |
-| Cambiar de plantilla reemplaza los ajustes               | La plantilla es un punto de partida; si se pierden ajustes hechos a mano, se puede deshacer.              |
-| Sesiones JWT, no en base de datos                        | Es lo que admite Auth.js con contraseña; la cuenta se comprueba en cada petición igualmente.              |
-| Contraseñas con scrypt de Node                           | Resistente a fuerza bruta con hardware y sin módulos nativos que compilar.                                |
-| Imágenes en PostgreSQL (`bytea`)                         | Una sola cosa que respaldar y permisos por documento sin un almacén aparte; el tamaño está acotado.       |
-| Concurrencia optimista por revisión                      | Varias pestañas o dispositivos sin bloqueos; un conflicto se resuelve preguntando, nunca en silencio.     |
-| Títulos con origen (`CONTENT` o `MANUAL`)                | El título sigue al texto hasta que se le da un nombre, y se puede volver a ese comportamiento.            |
-| Carpetas de un nivel                                     | Cubren el uso habitual sin la complejidad de un árbol; anidar puede venir después.                        |
-| Eliminar sin papelera, con confirmación                  | Simple y explícito; el historial de versiones de la fase 8 cubrirá la recuperación.                       |
-| Server Actions solo para las cuentas                     | Auth.js las usa para entrar y salir; los documentos van por una API REST que también usa el editor.       |
-| `connection()` antes de leer la sesión                   | Auth.js genera valores aleatorios al leerla; Next.js exige que eso ocurra ya en tiempo de petición.       |
+| Decisión                                                       | Motivo                                                                                                    |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Una app, no un monorepo                                        | Un solo despliegue; las capas se separan por carpetas y por lint.                                         |
+| Diseño de paneles en cookie                                    | El servidor pinta el diseño guardado sin parpadeo.                                                        |
+| Atajos de panel con `Alt`                                      | Los navegadores reservan `Ctrl`/`Cmd` + dígito para las pestañas.                                         |
+| Fuente serif autoalojada                                       | Build reproducible y sin avisos; las demás usan `next/font/google`.                                       |
+| shadcn/ui sobre Radix                                          | Primitivas accesibles cuyo código queda en el repositorio.                                                |
+| `$` no se cierra automáticamente                               | Un `$` de cierre tras un precio convertiría la frase en fórmula.                                          |
+| Cursiva con `_`, no con `*`                                    | Evita ambigüedades con los asteriscos de la negrita.                                                      |
+| Título derivado de los metadatos o del primer encabezado       | No hay nombre que mantener aparte hasta la gestión documental.                                            |
+| Código con `listings` en el documento completo                 | LaTeX idiomático en vez de decenas de macros de resaltado.                                                |
+| Identificadores ASCII (`ascii_identifiers`)                    | Etiquetas legibles: `introduccion`, no `introducciuxf3n`.                                                 |
+| Memoria con `+RTS -M`, no con `RLIMIT_AS`                      | El runtime de Haskell reserva direcciones que un rlimit rompería.                                         |
+| KaTeX en el cliente, no en el servidor                         | Componer fórmulas es trabajo de CPU sin aislar; que lo haga quien escribe.                                |
+| Sanear con DOMPurify en el cliente                             | Usa el analizador real del navegador, en el punto de inserción.                                           |
+| Imágenes remotas no se muestran                                | El PDF se compila sin red; la vista previa no promete lo que no habrá.                                    |
+| Solo PNG y JPEG                                                | Son los formatos que el motor LaTeX puede incluir.                                                        |
+| Zoom con la propiedad CSS `zoom`                               | Escala también el diseño, así el desplazamiento sigue siendo correcto.                                    |
+| bubblewrap para aislar procesos                                | Aísla archivos, red y procesos sin privilegios de root.                                                   |
+| Sin aislamiento no se compila                                  | Fallar cerrado: mejor no ofrecer el PDF que exponer el servidor.                                          |
+| PDF binario en la respuesta, avisos en cabecera                | Evita codificar el PDF en base64 dentro de un JSON.                                                       |
+| Compilar a petición, no en cada pausa                          | Es la operación más cara; la vista rápida ya da respuesta inmediata.                                      |
+| Paquetes LaTeX descargados de antemano                         | Permite compilar sin red.                                                                                 |
+| Plantillas como datos, no como archivos `.latex`               | Un preámbulo generado desde ajustes validados; la plantilla de Pandoc sigue sirviendo para todo lo demás. |
+| Fuentes de la vista rápida = fuentes del PDF                   | La vista rápida debe parecerse al resultado; las fuentes se cargan solo si la plantilla las usa.          |
+| Cabecera y pie solo en el PDF                                  | En una hoja continua no hay páginas que numerar; mostrarlos sería inventar.                               |
+| Cambiar de plantilla reemplaza los ajustes                     | La plantilla es un punto de partida; si se pierden ajustes hechos a mano, se puede deshacer.              |
+| Sesiones JWT, no en base de datos                              | Es lo que admite Auth.js con contraseña; la cuenta se comprueba en cada petición igualmente.              |
+| Contraseñas con scrypt de Node                                 | Resistente a fuerza bruta con hardware y sin módulos nativos que compilar.                                |
+| Imágenes en PostgreSQL (`bytea`)                               | Una sola cosa que respaldar y permisos por documento sin un almacén aparte; el tamaño está acotado.       |
+| Concurrencia optimista por revisión                            | Varias pestañas o dispositivos sin bloqueos; un conflicto se resuelve preguntando, nunca en silencio.     |
+| Títulos con origen (`CONTENT` o `MANUAL`)                      | El título sigue al texto hasta que se le da un nombre, y se puede volver a ese comportamiento.            |
+| Carpetas de un nivel                                           | Cubren el uso habitual sin la complejidad de un árbol; anidar puede venir después.                        |
+| Eliminar sin papelera, con confirmación                        | Simple y explícito; el historial cubre los cambios de un documento, no su borrado.                        |
+| Server Actions solo para las cuentas                           | Auth.js las usa para entrar y salir; los documentos van por una API REST que también usa el editor.       |
+| `connection()` antes de leer la sesión                         | Auth.js genera valores aleatorios al leerla; Next.js exige que eso ocurra ya en tiempo de petición.       |
+| Citas con citeproc, no con BibTeX ni biber                     | Pandoc formatea las citas al convertir: la vista rápida, el LaTeX y el PDF coinciden y no hay otro motor. |
+| Solo se envía la bibliografía citada                           | Menos datos por petición, y editar una referencia sin citar no invalida conversiones.                     |
+| Versiones como copias completas                                | Restaurar y comparar son triviales; los documentos son pequeños y las automáticas tienen tope.            |
+| Una versión automática cada diez minutos, al guardar           | Un historial legible por ratos de trabajo, sin tareas en segundo plano.                                   |
+| Restaurar conserva antes el estado actual                      | Restaurar nunca pierde nada y se deshace con otra restauración.                                           |
+| Paleta con `Ctrl/Cmd+K`, enlaces con `Ctrl/Cmd+K` en el editor | Es la convención de cada contexto; `Ctrl/Cmd+P` cubre la paleta dentro del editor.                        |
+| Progreso de la guía en el navegador                            | Es ayuda, no datos del usuario: no merece una tabla ni una petición.                                      |
 
 ## Riesgos conocidos
 
@@ -424,6 +504,11 @@ imágenes de IndexedDB; después lo borra del navegador. La muestra sin tocar no
 - **Paquetes LaTeX fuera de la caché.** Un documento que cargue a mano un paquete no
   descargado falla con un mensaje que lo dice. Las plantillas están cubiertas: sus
   pruebas compilan cada una sin red.
+- **Historial sin tope de tamaño total.** Las versiones con nombre no se purgan; una
+  cuenta que guarde cientos de versiones de documentos grandes ocupa espacio sin límite.
+  Hace falta un tope por documento o por cuenta si el uso lo pide.
+- **Estilos CSL fijos.** Chicago (el de Pandoc), APA e IEEE; otros requieren añadir el
+  archivo y su nombre al contrato.
 - **pdfLaTeX sin probar.** El preámbulo incluye una rama para pdfLaTeX (fuentes
   `tgpagella`, `libertinus`…) para quien lleve el `.tex` a otro sistema. El motor del
   proyecto es XeTeX y aquí no hay pdfLaTeX con el que comprobarla.

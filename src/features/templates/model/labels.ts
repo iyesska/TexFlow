@@ -1,4 +1,5 @@
 import type {
+  CitationStyle,
   CoverStyle,
   FontId,
   FooterStyle,
@@ -46,4 +47,12 @@ export const COVER_LABELS: Readonly<Record<CoverStyle, string>> = {
 export const LANGUAGE_LABELS: Readonly<Record<Language, string>> = {
   es: "Español",
   en: "English",
+};
+
+export const CITATION_STYLE_LABELS: Readonly<
+  Record<CitationStyle, { name: string; example: string }>
+> = {
+  "chicago-author-date": { name: "Chicago (autor y año)", example: "(Pérez 2020, 15)" },
+  apa: { name: "APA, 7.ª edición", example: "(Pérez, 2020, p. 15)" },
+  ieee: { name: "IEEE (numérico)", example: "[1, p. 15]" },
 };

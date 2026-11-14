@@ -23,10 +23,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { keepNamedVersion } from "@/features/history/model/history-api";
 import { cn } from "@/lib/utils";
 
 import { useDocumentSession, useSaveStatus } from "../hooks/use-document";
 import type { SaveStatus } from "../model/document-session";
+
+/** What the history calls the copy a conflict set aside. */
+const OTHER_COPY_LABEL = "Guardada desde otra pestaña o dispositivo";
+const THIS_COPY_LABEL = "Cambios de esta pestaña que no se guardaron";
 
 interface StatusView {
   readonly label: string;
@@ -59,28 +64,77 @@ function ConflictDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const session = useDocumentSession();
+  const [pending, setPending] = useState<"theirs" | "mine" | null>(null);
+
+  /** Keeps the copy that loses in the history first; nothing goes if that fails. */
+  const choose = async (keep: "theirs" | "mine") => {
+    setPending(keep);
+    const { markdown, settings, bibliography } = session.getSnapshot();
+    const kept =
+      keep === "mine"
+        ? await keepNamedVersion(session.id, OTHER_COPY_LABEL)
+        : await keepNamedVersion(session.id, THIS_COPY_LABEL, {
+            markdown,
+            settings,
+            bibliography,
+          });
+    if (!kept.ok) {
+      setPending(null);
+      toast.error("No se pudo guardar la otra versión en el historial", {
+        description: `${kept.message} Inténtalo de nuevo: no se ha cambiado nada.`,
+      });
+      return;
+    }
+    if (keep === "mine") {
+      setPending(null);
+      onOpenChange(false);
+      await session.overwrite();
+      return;
+    }
+    session.abandon();
+    window.location.reload();
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => pending === null && onOpenChange(next)}
+    >
       <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>Este documento ha cambiado en otro sitio</AlertDialogTitle>
           <AlertDialogDescription>
             Se guardó desde otra pestaña o dispositivo mientras lo editabas aquí. Elige
-            qué versión conservar: la otra se perderá.
+            qué versión conservar; la otra quedará guardada en el historial.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Decidir más tarde</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending !== null}>
+            Decidir más tarde
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="outline"
-            onClick={() => {
-              session.abandon();
-              window.location.reload();
+            disabled={pending !== null}
+            onClick={(event) => {
+              event.preventDefault();
+              void choose("theirs");
             }}
           >
+            {pending === "theirs" ? (
+              <LoaderCircle className="animate-spin" aria-hidden />
+            ) : null}
             Cargar la otra versión
           </AlertDialogAction>
-          <AlertDialogAction onClick={() => void session.overwrite()}>
+          <AlertDialogAction
+            disabled={pending !== null}
+            onClick={(event) => {
+              event.preventDefault();
+              void choose("mine");
+            }}
+          >
+            {pending === "mine" ? (
+              <LoaderCircle className="animate-spin" aria-hidden />
+            ) : null}
             Conservar la mía
           </AlertDialogAction>
         </AlertDialogFooter>

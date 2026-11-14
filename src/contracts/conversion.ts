@@ -12,8 +12,18 @@ export const requestSettingsSchema = documentSettingsSchema.default(DEFAULT_SETT
  * handlers and the client so both sides validate the same shapes.
  */
 
+/**
+ * The BibTeX entries the document cites, if any: citations are formatted with them
+ * and a list of references is added at the end.
+ */
+export const requestBibliographySchema = z
+  .string()
+  .max(LIMITS.maxBibliographyLength)
+  .optional();
+
 export const convertRequestSchema = z.object({
   markdown: z.string().max(LIMITS.maxMarkdownLength),
+  bibliography: requestBibliographySchema,
   /** A complete, compilable document (true) or only the body to paste elsewhere. */
   standalone: z.boolean().default(true),
   settings: requestSettingsSchema,
@@ -68,6 +78,7 @@ export const PREVIEW_ID_PREFIX = "pv-";
 
 export const previewRequestSchema = z.object({
   markdown: z.string().max(LIMITS.maxMarkdownLength),
+  bibliography: requestBibliographySchema,
   settings: requestSettingsSchema,
 });
 

@@ -39,6 +39,16 @@ interface CallOptions {
   readonly signal?: AbortSignal;
 }
 
+/** The part of a successful answer the caller needs; an empty answer is unexpected. */
+export function unwrap<Shape, Value>(
+  result: ApiResult<Shape | null>,
+  pick: (shape: Shape) => Value,
+): ApiResult<Value> {
+  if (!result.ok) return result;
+  if (result.value === null) return UNEXPECTED;
+  return { ok: true, value: pick(result.value) };
+}
+
 export async function callApi<Value>(
   url: string,
   options: CallOptions,

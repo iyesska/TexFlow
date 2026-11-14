@@ -3,11 +3,14 @@ import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 
-import { slashCompletions, texCompletions } from "./completions";
+import { citationCompletions, slashCompletions, texCompletions } from "./completions";
 import { markdownSupport } from "./language";
 
 /** Runs a completion source with the cursor at the `|` in `marked`. */
-function complete(source: typeof slashCompletions, marked: string) {
+function complete(
+  source: (context: CompletionContext) => ReturnType<typeof slashCompletions>,
+  marked: string,
+) {
   const pos = marked.indexOf("|");
   const doc = marked.replace("|", "");
   const state = EditorState.create({ doc, extensions: [markdownSupport()] });
@@ -63,5 +66,38 @@ describe("TeX completions", () => {
       "$\\frac{numerador}{denominador}$",
     );
     expect(apply("$\\be|$", texCompletions, "\\begin")).toContain("\\end{entorno}");
+  });
+});
+
+it("inserts a citation with the cursor after the @", () => {
+  expect(apply("Según /cit|", slashCompletions, "/citar")).toBe("Según [@]");
+});
+
+describe("citation completions", () => {
+  const citations = citationCompletions(() => [
+    { key: "perez2020", label: "Pérez y Gómez (2020)", title: "Series convergentes" },
+    { key: "knuth1984", label: "Knuth (1984)", title: "The TeXbook" },
+  ]);
+
+  it("offers the document's references after @, with their authors and year", () => {
+    const { result, labels } = complete(citations, "Según [@pe|");
+    expect(labels).toEqual(["@perez2020", "@knuth1984"]);
+    expect(result?.options[0]).toMatchObject({ detail: "Pérez y Gómez (2020)" });
+    expect(complete(citations, "como dice -@|").labels).toContain("@knuth1984");
+  });
+
+  it("stays out of e-mail addresses, code and math", () => {
+    expect(complete(citations, "ana@ex|").result).toBeNull();
+    expect(complete(citations, "`@pe|`").result).toBeNull();
+    expect(complete(citations, "$a @b|$").result).toBeNull();
+  });
+
+  it("offers nothing when the document has no references", () => {
+    expect(
+      complete(
+        citationCompletions(() => []),
+        "[@|",
+      ).result,
+    ).toBeNull();
   });
 });

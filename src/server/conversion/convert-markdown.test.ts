@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { LIMITS } from "@/config/limits";
 import { DEFAULT_SETTINGS, templateSettings } from "@/templates/catalog";
+import type { CitationStyle } from "@/templates/settings";
 
 import { withPreambleNotes } from "./body-requirements";
 import { convertMarkdownToLatex } from "./convert-markdown";
@@ -155,6 +156,54 @@ describe("body-only fragments", () => {
     expect(withPreambleNotes("Hola.")).toBe("Hola.");
     const notes = withPreambleNotes("\\href{a}{b} \\hypertarget{c}{d}");
     expect(notes.match(/usepackage\{hyperref\}/g)).toHaveLength(1);
+  });
+});
+
+const BIBLIOGRAPHY = String.raw`@book{perez2020,
+  author = {P{\'e}rez, Ana and G{\'o}mez, Juan},
+  title = {Series convergentes},
+  publisher = {Editorial Universitaria},
+  year = {2020}
+}`;
+
+describe("citations", () => {
+  const convert = async (
+    citationStyle: CitationStyle,
+    markdown = "Según [@perez2020, p. 15].",
+  ) => {
+    const result = await convertMarkdownToLatex(
+      {
+        markdown,
+        standalone: true,
+        settings: { ...DEFAULT_SETTINGS, citationStyle },
+        bibliography: BIBLIOGRAPHY,
+      },
+      "pandoc",
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  };
+
+  it("formats citations and adds the references, in the document's language", async () => {
+    const { latex } = await convert("chicago-author-date");
+    // Each citation links to its reference.
+    expect(latex).toContain(
+      "(\\protect\\hyperlink{ref-perez2020}{Pérez y Gómez 2020, 15})",
+    );
+    expect(latex).toContain("Referencias");
+    expect(latex).toContain("\\begin{CSLReferences}");
+  });
+
+  it.each([
+    ["apa", "{Pérez \\& Gómez, 2020, p. 15}"],
+    ["ieee", "{[}1, p. 15{]}"],
+  ] as const)("writes citations in the %s style", async (style, citation) => {
+    expect((await convert(style)).latex).toContain(citation);
+  });
+
+  it("warns about a citation the bibliography does not have", async () => {
+    const { warnings } = await convert("chicago-author-date", "Según [@nadie2021].");
+    expect(warnings.join("\n")).toContain("nadie2021");
   });
 });
 

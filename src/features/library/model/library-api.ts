@@ -8,7 +8,7 @@ import {
   type DocumentSummaryDto,
   type FolderDto,
 } from "@/contracts/documents";
-import { callApi, type ApiResult } from "@/lib/api-client";
+import { callApi, unwrap } from "@/lib/api-client";
 
 /** The library's calls to /api/documents and /api/folders. */
 
@@ -21,17 +21,6 @@ type Result<Value> =
       readonly ok: false;
       readonly message: string;
     };
-
-function unwrap<Shape, Value>(
-  result: ApiResult<Shape | null>,
-  pick: (shape: Shape) => Value,
-): Result<Value> {
-  if (!result.ok) return { ok: false, message: result.message };
-  if (result.value === null) {
-    return { ok: false, message: "El servidor devolvió una respuesta inesperada." };
-  }
-  return { ok: true, value: pick(result.value) };
-}
 
 const documentUrl = (id: string) => `/api/documents/${encodeURIComponent(id)}`;
 const folderUrl = (id: string) => `/api/folders/${encodeURIComponent(id)}`;

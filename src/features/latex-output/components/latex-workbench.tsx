@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConversionAlert } from "@/features/conversion/components/conversion-alert";
 import { ConversionStatusBar } from "@/features/conversion/components/conversion-status-bar";
 import {
+  useDocumentBibliography,
   useDocumentMarkdown,
   useDocumentSettings,
   useDocumentTitle,
@@ -44,7 +45,8 @@ export function LatexWorkbench() {
   const [standalone, setStandalone] = useState(true);
   const markdown = useDocumentMarkdown();
   const settings = useDocumentSettings();
-  const conversion = useLatexConversion(markdown, standalone, settings);
+  const bibliography = useDocumentBibliography();
+  const conversion = useLatexConversion(markdown, standalone, settings, bibliography);
   const title = useDocumentTitle();
   const fileName = useMemo(() => exportFileName(title, "tex"), [title]);
 

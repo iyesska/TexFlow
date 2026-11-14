@@ -97,36 +97,44 @@ la distingue.
 
 ## Componentes propios
 
-| Componente            | Ubicación                             | Uso                                             |
-| --------------------- | ------------------------------------- | ----------------------------------------------- |
-| `Wordmark`            | `src/components/brand`                | Logotipo                                        |
-| `ShortcutKeys`        | `src/components`                      | Muestra un atajo como teclas                    |
-| `FullPageMessage`     | `src/components/feedback`             | Error y 404                                     |
-| `PaneFrame`           | `src/features/workspace/components`   | Marco común de los paneles                      |
-| `PaperSheet`          | `src/features/preview/components`     | La hoja A4 de la vista previa                   |
-| `SaveIndicator`       | `src/features/document/components`    | Estado de guardado del documento                |
-| `EditorToolbar`       | `src/features/editor/components`      | Controles de formato del editor                 |
-| `ConversionAlert`     | `src/features/conversion/components`  | Error de conversión sobre el último resultado   |
-| `ConversionStatusBar` | `src/features/conversion/components`  | Pie de un panel que alimenta el servidor        |
-| `DocumentSheet`       | `src/features/preview/components`     | El documento compuesto sobre la hoja            |
-| `PdfDocument`         | `src/features/preview/components`     | El PDF compilado, página a página               |
-| `CompileProblems`     | `src/features/compilation/components` | Errores de LaTeX, con salto a la línea          |
-| `ExportMenu`          | `src/features/export/components`      | Las formas de sacar el documento                |
-| `DesignPanel`         | `src/features/templates/components`   | Panel lateral de plantilla y ajustes            |
-| `TemplateThumbnail`   | `src/features/templates/components`   | Miniatura de la primera página de una plantilla |
-| `DocumentTitle`       | `src/features/document/components`    | Nombre del documento, editable en su sitio      |
-| `BackToLibrary`       | `src/features/workspace/components`   | Vuelta a la biblioteca, tras guardar            |
-| `AccountMenu`         | `src/features/account/components`     | Quién ha entrado, tema y cerrar sesión          |
-| `Field`               | `src/features/account/components`     | Campo con etiqueta, pista y error enlazados     |
-| `PasswordField`       | `src/features/account/components`     | Contraseña que se puede mostrar                 |
-| `SampleSheet`         | `src/features/account/components`     | Hoja compuesta y su Markdown, al entrar         |
-| `Library`             | `src/features/library/components`     | La biblioteca de documentos                     |
-| `DocumentRow`         | `src/features/library/components`     | Un documento, con su menú y su menú contextual  |
-| `FolderNav`           | `src/features/library/components`     | Carpetas en la barra lateral                    |
-| `FolderChips`         | `src/features/library/components`     | Carpetas como fichas, en pantallas estrechas    |
-| `NameDialog`          | `src/features/library/components`     | Pide un nombre: carpeta o documento             |
-| `ConfirmDialog`       | `src/features/library/components`     | Confirma lo que no se puede deshacer            |
-| `ImportBanner`        | `src/features/library/components`     | Ofrece importar el documento del navegador      |
+| Componente            | Ubicación                              | Uso                                              |
+| --------------------- | -------------------------------------- | ------------------------------------------------ |
+| `Wordmark`            | `src/components/brand`                 | Logotipo                                         |
+| `ShortcutKeys`        | `src/components`                       | Muestra un atajo como teclas                     |
+| `FullPageMessage`     | `src/components/feedback`              | Error y 404                                      |
+| `PaneFrame`           | `src/features/workspace/components`    | Marco común de los paneles                       |
+| `PaperSheet`          | `src/features/preview/components`      | La hoja A4 de la vista previa                    |
+| `SaveIndicator`       | `src/features/document/components`     | Estado de guardado del documento                 |
+| `EditorToolbar`       | `src/features/editor/components`       | Controles de formato del editor                  |
+| `ConversionAlert`     | `src/features/conversion/components`   | Error de conversión sobre el último resultado    |
+| `ConversionStatusBar` | `src/features/conversion/components`   | Pie de un panel que alimenta el servidor         |
+| `DocumentSheet`       | `src/features/preview/components`      | El documento compuesto sobre la hoja             |
+| `PdfDocument`         | `src/features/preview/components`      | El PDF compilado, página a página                |
+| `CompileProblems`     | `src/features/compilation/components`  | Errores de LaTeX, con salto a la línea           |
+| `ExportMenu`          | `src/features/export/components`       | Las formas de sacar el documento                 |
+| `DesignPanel`         | `src/features/templates/components`    | Panel lateral de plantilla y ajustes             |
+| `TemplateThumbnail`   | `src/features/templates/components`    | Miniatura de la primera página de una plantilla  |
+| `DocumentTitle`       | `src/features/document/components`     | Nombre del documento, editable en su sitio       |
+| `BackToLibrary`       | `src/features/workspace/components`    | Vuelta a la biblioteca, tras guardar             |
+| `AccountMenu`         | `src/features/account/components`      | Quién ha entrado, tema y cerrar sesión           |
+| `Field`               | `src/features/account/components`      | Campo con etiqueta, pista y error enlazados      |
+| `PasswordField`       | `src/features/account/components`      | Contraseña que se puede mostrar                  |
+| `SampleSheet`         | `src/features/account/components`      | Hoja compuesta y su Markdown, al entrar          |
+| `Library`             | `src/features/library/components`      | La biblioteca de documentos                      |
+| `DocumentRow`         | `src/features/library/components`      | Un documento, con su menú y su menú contextual   |
+| `FolderNav`           | `src/features/library/components`      | Carpetas en la barra lateral                     |
+| `FolderChips`         | `src/features/library/components`      | Carpetas como fichas, en pantallas estrechas     |
+| `NameDialog`          | `src/features/library/components`      | Pide un nombre: carpeta o documento              |
+| `ConfirmDialog`       | `src/features/library/components`      | Confirma lo que no se puede deshacer             |
+| `ImportBanner`        | `src/features/library/components`      | Ofrece importar el documento del navegador       |
+| `BibliographyPanel`   | `src/features/bibliography/components` | Referencias del documento, para citar            |
+| `ReferenceDialog`     | `src/features/bibliography/components` | Formulario de una referencia, según su tipo      |
+| `HistoryPanel`        | `src/features/history/components`      | Historial de versiones, en un diálogo amplio     |
+| `VersionList`         | `src/features/history/components`      | Línea temporal de versiones, agrupada por día    |
+| `VersionChanges`      | `src/features/history/components`      | Cambios línea a línea, con las palabras marcadas |
+| `CommandPalette`      | `src/features/commands/components`     | Todas las acciones tras un buscador              |
+| `ShortcutsDialog`     | `src/features/commands/components`     | Los atajos de teclado, por grupos                |
+| `FirstStepsGuide`     | `src/features/onboarding/components`   | Primeros pasos, con su anillo de progreso        |
 
 ## Páginas de cuenta y biblioteca
 
@@ -145,6 +153,32 @@ la distingue.
   enfocar) y el menú contextual ofrecen lo mismo, con las mismas palabras.
 - **Primera visita.** Sin documentos, la biblioteca enseña las plantillas como tarjetas:
   elegir una crea el documento.
+
+## Bibliografía, historial y ayuda
+
+- **Referencias, al lado.** Un panel lateral no modal, como Diseño: se cita con el
+  editor a la vista. Cada referencia muestra título, autores y año, su clave en
+  monoespaciada y si el texto la cita. El botón **Citar** escribe en el cursor.
+- **Avisos que llevan a la solución.** Un error del BibTeX dice su línea y lleva al
+  texto; una clave citada que falta trae un botón para añadirla.
+- **El historial es una línea temporal.** Versiones agrupadas por día con su hora, un
+  icono por clase (reloj, marcador, flecha de deshacer) unidos por una línea fina. Las
+  versiones con nombre usan el acento: son lo que el escritor marcó.
+- **Los cambios, en verde y rojo suaves.** Fondos al 8 % de `--success` y
+  `--destructive` para las líneas, al 22 % para las palabras que cambiaron, y el signo
+  `+`/`−` además del color. Lo eliminado va tachado. Para los lectores de pantalla, cada
+  línea cambiada empieza diciendo si se añadió o se eliminó.
+- **Restaurar no asusta.** El botón es el principal del diálogo, no destructivo: la
+  confirmación explica que lo actual se guarda antes, y el aviso posterior ofrece
+  deshacer.
+- **La paleta, arriba.** Aparece en el tercio superior, como en las herramientas que la
+  popularizaron, con el atajo de cada acción a la derecha y la pista de teclado al pie.
+- **La barra superior no se apretuja.** Hasta `xl`, el selector de paneles baja a una
+  segunda fila. Desde ahí, la columna de acciones nunca es más estrecha que su
+  contenido. Cada rótulo aparece solo a partir de la anchura en la que cabe; en el
+  móvil, Diseño, Referencias e Historial pasan al menú de vista.
+- **Primeros pasos, discretos.** Un anillo con la cuenta (2/6) en la barra; el siguiente
+  paso, resaltado y con su botón. Se oculta y se recupera desde el menú de vista.
 
 ## Reglas
 

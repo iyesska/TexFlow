@@ -61,9 +61,11 @@ export async function compileDocument(
   design: DocumentSettings,
   settings: CompileSettings,
   signal?: AbortSignal,
+  /** The BibTeX entries the document cites. */
+  bibliography = "",
 ): Promise<CompileResult> {
   const converted = await convertMarkdownToLatex(
-    { markdown, standalone: true, settings: design },
+    { markdown, standalone: true, settings: design, bibliography },
     settings.pandocPath,
   );
   if (!converted.ok) return converted;

@@ -16,6 +16,8 @@ export type SaveStatus =
 export interface DocumentSnapshot {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  /** The references the text can cite, as BibTeX. */
+  readonly bibliography: string;
   readonly status: SaveStatus;
   /** The name the writer gave the document; null while its title follows the text. */
   readonly manualTitle: string | null;
@@ -25,6 +27,8 @@ export interface DocumentSnapshot {
 export interface ContentChange {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  /** Present when it changed since the server last had it. */
+  readonly bibliography?: string;
   readonly baseRevision: number;
 }
 
@@ -52,6 +56,8 @@ export interface DocumentSession {
   setMarkdown(markdown: string): void;
   /** Records a change of design and schedules an automatic save. */
   setSettings(settings: DocumentSettings): void;
+  /** Records a change of the references and schedules an automatic save. */
+  setBibliography(bibliography: string): void;
   /** Saves pending changes now, and resolves once nothing is left to save. */
   flush(): Promise<void>;
   /** After a conflict: keeps this version, replacing the one saved elsewhere. */
@@ -59,11 +65,18 @@ export interface DocumentSession {
   rename(title: string | null): Promise<RenameOutcome>;
   /** The work the server does not have yet, as a save would send it; null if none. */
   pendingChange(): ContentChange | null;
+  /** The revision of the server's copy this session's content is based on. */
+  revision(): number;
   /**
    * Takes back work that was not saved when this document was last open in the tab,
    * and saves it on top of the revision it was edited from.
    */
   restore(change: ContentChange): void;
+  /**
+   * Shows the document as the server now has it, as saved: after a version was
+   * restored there. Only call it with nothing left to save.
+   */
+  replace(document: OpenedDocument): void;
   /**
    * After a conflict: gives up this version, before the page loads the other one.
    * Nothing is saved from then on.
@@ -75,6 +88,7 @@ export interface DocumentSession {
 export interface OpenedDocument {
   readonly markdown: string;
   readonly settings: DocumentSettings;
+  readonly bibliography: string;
   readonly revision: number;
   readonly manualTitle: string | null;
 }
@@ -108,6 +122,7 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
   let snapshot: DocumentSnapshot = {
     markdown: initial.markdown,
     settings: initial.settings,
+    bibliography: initial.bibliography,
     manualTitle: initial.manualTitle,
     status: "saved",
   };
@@ -115,6 +130,11 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
   let baseRevision = initial.revision;
   /** The revision another tab or device saved, after a conflict. */
   let theirRevision = initial.revision;
+  /**
+   * The bibliography the server has, so a save sends it only when it changed; null
+   * when that is not known and the next save must send it.
+   */
+  let storedBibliography: string | null = initial.bibliography;
   /** Counts edits, so a save can tell whether something changed while it ran. */
   let edits = 0;
   let failures = 0;
@@ -144,11 +164,17 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
 
   const send = async () => {
     const editsAtStart = edits;
-    const { markdown, settings } = snapshot;
+    const { markdown, settings, bibliography } = snapshot;
+    const sendsBibliography = bibliography !== storedBibliography;
     update({ status: "saving" });
     let outcome: SaveOutcome;
     try {
-      outcome = await store.save({ markdown, settings, baseRevision });
+      outcome = await store.save({
+        markdown,
+        settings,
+        ...(sendsBibliography ? { bibliography } : {}),
+        baseRevision,
+      });
     } catch {
       outcome = { ok: false, reason: "failed" };
     }
@@ -156,6 +182,7 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
 
     if (outcome.ok) {
       baseRevision = outcome.revision;
+      if (sendsBibliography) storedBibliography = bibliography;
       failures = 0;
       const changedMeanwhile = edits !== editsAtStart;
       update({ status: changedMeanwhile ? "unsaved" : "saved" });
@@ -218,11 +245,17 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
       if (settingsKey(settings) !== settingsKey(snapshot.settings)) changed({ settings });
     },
 
+    setBibliography(bibliography) {
+      if (bibliography !== snapshot.bibliography) changed({ bibliography });
+    },
+
     flush: save,
 
     async overwrite() {
       if (snapshot.status !== "conflict") return;
       baseRevision = theirRevision;
+      // The other version may have other references: send ours with it.
+      storedBibliography = null;
       update({ status: "unsaved" });
       await save();
     },
@@ -235,16 +268,44 @@ export function createDocumentSession(options: DocumentSessionOptions): Document
 
     pendingChange() {
       if (snapshot.status === "saved") return null;
-      return { markdown: snapshot.markdown, settings: snapshot.settings, baseRevision };
+      const { markdown, settings, bibliography } = snapshot;
+      return { markdown, settings, bibliography, baseRevision };
     },
+
+    revision: () => baseRevision,
 
     restore(change) {
       if (disposed) return;
       cancelTimer();
       edits++;
       baseRevision = change.baseRevision;
-      update({ markdown: change.markdown, settings: change.settings, status: "unsaved" });
+      storedBibliography = null;
+      update({
+        markdown: change.markdown,
+        settings: change.settings,
+        ...(change.bibliography === undefined
+          ? {}
+          : { bibliography: change.bibliography }),
+        status: "unsaved",
+      });
       void save();
+    },
+
+    replace(document) {
+      if (disposed) return;
+      cancelTimer();
+      edits++;
+      failures = 0;
+      baseRevision = document.revision;
+      theirRevision = document.revision;
+      storedBibliography = document.bibliography;
+      update({
+        markdown: document.markdown,
+        settings: document.settings,
+        bibliography: document.bibliography,
+        manualTitle: document.manualTitle,
+        status: "saved",
+      });
     },
 
     abandon() {

@@ -18,7 +18,7 @@ async function UserLibrary() {
   ]);
   return (
     <Library
-      user={{ name: user.name, email: user.email }}
+      user={{ id: user.id, name: user.name, email: user.email }}
       documents={documents.map(summaryDto)}
       folders={folders}
     />

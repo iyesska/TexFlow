@@ -48,6 +48,7 @@ function open(store: DocumentStore) {
     initial: {
       markdown: "# Informe",
       settings: DEFAULT_SETTINGS,
+      bibliography: "@book{a, title={A}}",
       revision: 3,
       manualTitle: null,
     },
@@ -65,6 +66,7 @@ describe("document session", () => {
     expect(doc.getSnapshot()).toEqual({
       markdown: "# Informe",
       settings: DEFAULT_SETTINGS,
+      bibliography: "@book{a, title={A}}",
       manualTitle: null,
       status: "saved",
     });
@@ -228,6 +230,7 @@ describe("document session", () => {
     expect(doc.pendingChange()).toEqual({
       markdown: "sin guardar",
       settings: DEFAULT_SETTINGS,
+      bibliography: "@book{a, title={A}}",
       baseRevision: 3,
     });
     await doc.flush();
@@ -244,10 +247,57 @@ describe("document session", () => {
     });
     expect(doc.getSnapshot()).toMatchObject({ markdown: "recuperado", status: "saving" });
     await doc.flush();
+    // Restored work may carry other references than the server's: they are sent.
     expect(server.saves).toEqual([
-      { markdown: "recuperado", settings: templateSettings("thesis"), baseRevision: 3 },
+      {
+        markdown: "recuperado",
+        settings: templateSettings("thesis"),
+        bibliography: "@book{a, title={A}}",
+        baseRevision: 3,
+      },
     ]);
     expect(doc.getSnapshot().status).toBe("saved");
+  });
+
+  it("sends the bibliography only when it changed since the server last had it", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    doc.setMarkdown("texto [@a]");
+    await doc.flush();
+    expect(server.saves[0]).not.toHaveProperty("bibliography");
+
+    doc.setBibliography("@book{b, title={B}}");
+    await doc.flush();
+    expect(server.saves[1]?.bibliography).toBe("@book{b, title={B}}");
+
+    doc.setMarkdown("texto [@b]");
+    await doc.flush();
+    expect(server.saves[2]).not.toHaveProperty("bibliography");
+  });
+
+  it("shows a document restored on the server as saved, and saves on top of it", async () => {
+    const server = fakeServer();
+    const doc = open(server.store);
+    doc.replace({
+      markdown: "# Restaurado",
+      settings: templateSettings("thesis"),
+      bibliography: "",
+      revision: 9,
+      manualTitle: "Nombre",
+    });
+    expect(doc.getSnapshot()).toMatchObject({
+      markdown: "# Restaurado",
+      bibliography: "",
+      manualTitle: "Nombre",
+      status: "saved",
+    });
+    expect(doc.revision()).toBe(9);
+    server.answerNext({ ok: true, revision: 10 });
+    doc.setMarkdown("# Restaurado y editado");
+    await doc.flush();
+    expect(server.saves[0]).toMatchObject({ baseRevision: 9 });
+    expect(doc.revision()).toBe(10);
+    expect(server.saves[0]).not.toHaveProperty("bibliography");
   });
 
   it("notifies subscribers and stops after unsubscribing", () => {

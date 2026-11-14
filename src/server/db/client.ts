@@ -27,4 +27,4 @@ export function db(): PrismaClient {
 }
 
 export type { PrismaClient };
-export { Prisma, TitleSource } from "./generated/client";
+export { Prisma, TitleSource, VersionKind } from "./generated/client";

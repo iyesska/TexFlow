@@ -41,6 +41,8 @@ const SLASH_COMPLETIONS: readonly Completion[] = [
   slash("imagen", "Imagen", BLOCK_TEMPLATES.image),
   slash("enlace", "Enlace", "[${texto}](${https://})"),
   slash("nota", "Nota al pie", BLOCK_TEMPLATES.footnote),
+  // The empty field leaves the cursor after "@", where the keys are offered.
+  slash("citar", "Cita de una referencia", "[@${}]"),
   slash("separador", "Línea horizontal", "---\n"),
 ];
 
@@ -110,4 +112,35 @@ export function texCompletions(context: CompletionContext): CompletionResult | n
   if (word.to - word.from < 2 && !context.explicit) return null;
   if (syntaxContextAt(context.state, word.from) === "code") return null;
   return { from: word.from, options: TEX_COMPLETIONS, validFor: /^\\[a-zA-Z]*$/ };
+}
+
+/** A reference the text can cite, as the completion list shows it. */
+export interface CitationOption {
+  readonly key: string;
+  /** "Pérez y Gómez (2020)" */
+  readonly label: string;
+  readonly title: string;
+}
+
+/**
+ * Completes citation keys after "@" (or "-@"), from the document's references. An
+ * e-mail address is left alone, as Pandoc leaves it.
+ */
+export function citationCompletions(references: () => readonly CitationOption[]) {
+  return (context: CompletionContext): CompletionResult | null => {
+    const word = context.matchBefore(/-?@[\p{L}\p{N}_:.#$%&\-+?<>~/]*/u);
+    if (!word) return null;
+    const before = context.state.sliceDoc(word.from - 1, word.from);
+    if (before && /[\p{L}\p{N}_.@]/u.test(before)) return null;
+    if (syntaxContextAt(context.state, word.from) !== "text") return null;
+    const options = references().map(({ key, label, title }): Completion => ({
+      label: `@${key}`,
+      detail: label,
+      info: title,
+      type: "variable",
+    }));
+    if (options.length === 0) return null;
+    const at = word.text.startsWith("-") ? word.from + 1 : word.from;
+    return { from: at, options, validFor: /^@[\p{L}\p{N}_:.#$%&\-+?<>~/]*$/u };
+  };
 }

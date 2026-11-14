@@ -4,11 +4,12 @@ import { languages } from "@codemirror/language-data";
 import type { Extension } from "@codemirror/state";
 import { classHighlighter, tagHighlighter, tags as t } from "@lezer/highlight";
 
-import { mathTag, pandocSyntax } from "./math";
+import { citationTag, mathTag, pandocSyntax } from "./math";
 
 /** Classes for the Markdown-specific tags the stock class highlighter leaves out. */
 const markdownHighlighter = tagHighlighter([
   { tag: mathTag, class: "tok-math" },
+  { tag: citationTag, class: "tok-citation" },
   { tag: t.processingInstruction, class: "tok-markup" },
   { tag: t.contentSeparator, class: "tok-markup" },
   { tag: t.monospace, class: "tok-code" },

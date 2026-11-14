@@ -25,7 +25,12 @@ import {
   placeholder,
 } from "@codemirror/view";
 
-import { slashCompletions, texCompletions } from "./completions";
+import {
+  citationCompletions,
+  slashCompletions,
+  texCompletions,
+  type CitationOption,
+} from "./completions";
 import { formattingKeymap } from "./keymap";
 import { markdownSupport } from "./language";
 import { spanishPhrases } from "@/lib/codemirror/phrases";
@@ -46,6 +51,8 @@ export interface EditorListeners {
    * null to use the cursor.
    */
   onImageFiles(files: File[], position: number | null): void;
+  /** The references the text can cite, for completing "@". */
+  citations(): readonly CitationOption[];
 }
 
 function imageFiles(data: DataTransfer | null): File[] {
@@ -81,6 +88,9 @@ export function markdownEditorExtensions(listeners: EditorListeners): Extension 
     markdownSupport(),
     markdownLanguage.data.of({ autocomplete: slashCompletions }),
     markdownLanguage.data.of({ autocomplete: texCompletions }),
+    markdownLanguage.data.of({
+      autocomplete: citationCompletions(() => listeners.citations()),
+    }),
     // "$" is deliberately not auto-closed: a stray closing dollar after a price such
     // as "$5" would silently turn the rest of the sentence into a formula.
     markdownLanguage.data.of({

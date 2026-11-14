@@ -4,6 +4,22 @@ import type { BlockContext, InlineContext, Line, MarkdownConfig } from "@lezer/m
 /** Highlighting tag for TeX math, so it can be coloured apart from code. */
 export const mathTag = Tag.define();
 
+/** Highlighting tag for citations: @key, as Pandoc reads them. */
+export const citationTag = Tag.define();
+
+/** A citation key after its "@", as Pandoc reads it; or @{a key in braces}. */
+const CITATION =
+  /^-?@(?:\{[^{}\n]+\}|[\p{L}\p{N}_](?:[\p{L}\p{N}_]|[:.#$%&\-+?<>~/](?=[\p{L}\p{N}_]))*)/u;
+
+/** Pandoc citations: @key in the text or between brackets, not an e-mail address. */
+function parseCitation(cx: InlineContext, pos: number): number {
+  const previous = pos > cx.offset ? String.fromCharCode(cx.char(pos - 1)) : "";
+  if (/[\p{L}\p{N}_.@]/u.test(previous)) return -1;
+  const match = CITATION.exec(cx.slice(pos, Math.min(cx.end, pos + 200)));
+  if (!match) return -1;
+  return cx.addElement(cx.elt("Citation", pos, pos + match[0].length));
+}
+
 const DOLLAR = 36;
 const BACKSLASH = 92;
 const NEWLINE = 10;
@@ -116,6 +132,7 @@ export const pandocSyntax: MarkdownConfig = {
     { name: "BlockMath", block: true, style: mathTag },
     { name: "MathMark", style: t.processingInstruction },
     { name: "FootnoteRef", style: t.link },
+    { name: "Citation", style: citationTag },
     { name: "FrontMatter", block: true, style: t.meta },
   ],
   parseInline: [
@@ -134,6 +151,16 @@ export const pandocSyntax: MarkdownConfig = {
       before: "Link",
       parse(cx, next, pos) {
         return next === 91 /* [ */ ? parseFootnoteRef(cx, pos) : -1;
+      },
+    },
+    {
+      name: "Citation",
+      before: "Emphasis",
+      parse(cx, next, pos) {
+        // "@", or "-@" that suppresses the author.
+        if (next === 64) return parseCitation(cx, pos);
+        if (next === 45 && cx.char(pos + 1) === 64) return parseCitation(cx, pos);
+        return -1;
       },
     },
   ],

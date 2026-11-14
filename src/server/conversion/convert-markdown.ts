@@ -6,6 +6,7 @@ import { templateById } from "@/templates/catalog";
 import type { DocumentSettings } from "@/templates/settings";
 
 import { withPreambleNotes } from "./body-requirements";
+import { citationSetup } from "./citations";
 import { MARKDOWN_FORMAT, runPandoc } from "./pandoc";
 
 const COMMON_OPTIONS = [`--from=${MARKDOWN_FORMAT}`, "--to=latex", "--wrap=preserve"];
@@ -25,12 +26,14 @@ export async function convertMarkdownToLatex(
   pandocPath: string,
 ): Promise<ConvertResponse> {
   const { markdown, standalone, settings } = request;
+  const citations = citationSetup(request.bibliography, settings);
 
   if (!standalone) {
     const result = await runPandoc(
       markdown,
-      [...COMMON_OPTIONS, ...bodyOptions(settings)],
+      [...COMMON_OPTIONS, ...bodyOptions(settings), ...citations.options],
       pandocPath,
+      citations.files,
     );
     if (!result.ok) return result;
     return {
@@ -44,9 +47,15 @@ export async function convertMarkdownToLatex(
   const result = await runPandoc(
     markdown,
     // A whole document can load the listings package for its code blocks.
-    [...COMMON_OPTIONS, "--standalone", "--listings", ...layout.options],
+    [
+      ...COMMON_OPTIONS,
+      "--standalone",
+      "--listings",
+      ...layout.options,
+      ...citations.options,
+    ],
     pandocPath,
-    [{ name: PREAMBLE_FILE, data: layout.preamble }],
+    [{ name: PREAMBLE_FILE, data: layout.preamble }, ...citations.files],
   );
   if (!result.ok) return result;
   return { ok: true, latex: result.output, warnings: result.warnings };

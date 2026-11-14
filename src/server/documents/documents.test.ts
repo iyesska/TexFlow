@@ -115,6 +115,31 @@ describe.skipIf(!databaseAvailable)("documents", () => {
     });
   });
 
+  it("keeps the bibliography, and leaves it alone when a save does not send it", async () => {
+    const user = await createTestUser();
+    const document = await newDocument(user.id);
+    const bibliography = "@book{a, title={A}}";
+    await saveDocumentContent(user.id, document.id, {
+      markdown: "# Con citas [@a]",
+      settings: DEFAULT_SETTINGS,
+      bibliography,
+      baseRevision: 0,
+    });
+    await saveDocumentContent(user.id, document.id, {
+      markdown: "# Con citas [@a], más texto",
+      settings: DEFAULT_SETTINGS,
+      baseRevision: 1,
+    });
+    expect(await getDocument(user.id, document.id)).toMatchObject({
+      bibliography,
+      revision: 2,
+    });
+
+    const copy = await duplicateDocument(user.id, document.id);
+    if (!copy.ok) throw new Error(copy.reason);
+    expect(copy.document.bibliography).toBe(bibliography);
+  });
+
   it("keeps a name given by hand, and goes back to the text's title when it is cleared", async () => {
     const user = await createTestUser();
     const document = await newDocument(user.id);

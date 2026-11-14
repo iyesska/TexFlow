@@ -52,7 +52,9 @@ export function useDesign(): Design {
     (id: TemplateId) => {
       const previous = session.getSnapshot().settings;
       if (previous.templateId === id && !isCustomized(previous)) return;
-      session.setSettings(templateSettings(id, previous.language));
+      session.setSettings(
+        templateSettings(id, previous.language, previous.citationStyle),
+      );
       // Adjustments made by hand are worth an undo; a plain switch is not.
       if (isCustomized(previous)) {
         toast(`Plantilla «${templateById(id).name}» aplicada`, {
@@ -66,7 +68,9 @@ export function useDesign(): Design {
 
   const reset = useCallback(() => {
     const current = session.getSnapshot().settings;
-    session.setSettings(templateSettings(current.templateId, current.language));
+    session.setSettings(
+      templateSettings(current.templateId, current.language, current.citationStyle),
+    );
   }, [session]);
 
   return {

@@ -183,3 +183,41 @@ describe.skipIf(!ready)("design settings in the PDF", () => {
     );
   }, 60_000);
 });
+
+const BIBLIOGRAPHY = String.raw`@book{perez2020,
+  author = {P{\'e}rez, Ana and G{\'o}mez, Juan},
+  title = {Series convergentes},
+  publisher = {Editorial Universitaria},
+  year = {2020}
+}`;
+
+/** Text without spaces: pdf.js may split a line where a link starts or ends. */
+const squeeze = (text: string) => text.replace(/\s+/g, "");
+
+describe.skipIf(!ready)("citations in the PDF", () => {
+  it.each([
+    ["chicago-author-date", "academic-paper", "(Pérez y Gómez 2020, 15)"],
+    ["apa", "academic-paper", "(Pérez & Gómez, 2020, p. 15)"],
+    ["ieee", "academic-paper", "[1, p. 15]"],
+    ["apa", "thesis", "(Pérez & Gómez, 2020, p. 15)"],
+  ] as const)(
+    "formats %s citations offline in the %s template, with the references",
+    async (citationStyle, template, citation) => {
+      const result = await compileDocument(
+        "# Uno\n\nSegún [@perez2020, p. 15].",
+        [],
+        { ...templateSettings(template), citationStyle },
+        toolchain,
+        undefined,
+        BIBLIOGRAPHY,
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      expect(result.warnings.map(({ message }) => message)).toEqual([]);
+      const text = (await readPdf(new Uint8Array(result.pdf))).pages.join("\n");
+      expect(squeeze(text)).toContain(squeeze(citation));
+      expect(text).toContain("Referencias");
+      expect(text).toContain("Series convergentes");
+    },
+    60_000,
+  );
+});

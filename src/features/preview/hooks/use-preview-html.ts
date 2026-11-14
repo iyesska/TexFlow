@@ -6,17 +6,21 @@ import {
   type Conversion,
   type ConversionOutcome,
 } from "@/features/conversion/hooks/use-conversion";
+import { bibliographyFor } from "@/documents/bibtex";
 import { requestConversion } from "@/features/conversion/model/request-conversion";
+import { fingerprint } from "@/lib/fingerprint";
 import { settingsKey, type DocumentSettings } from "@/templates/settings";
 
 async function requestPreview(
   markdown: string,
   settings: DocumentSettings,
+  bibliography: string,
   signal: AbortSignal,
 ): Promise<ConversionOutcome<string>> {
+  const references = bibliographyFor(markdown, bibliography);
   const response = await requestConversion(
     "/api/preview",
-    { markdown, settings },
+    { markdown, settings, ...(references ? { bibliography: references } : {}) },
     previewResponseSchema,
     signal,
   );
@@ -35,8 +39,10 @@ async function requestPreview(
 export function usePreviewHtml(
   markdown: string | null,
   settings: DocumentSettings,
+  bibliography: string,
 ): Conversion<string> {
-  return useConversion(markdown, settingsKey(settings), (text, signal) =>
-    requestPreview(text, settings, signal),
+  const variant = `${settingsKey(settings)}:${fingerprint(bibliography)}`;
+  return useConversion(markdown, variant, (text, signal) =>
+    requestPreview(text, settings, bibliography, signal),
   );
 }

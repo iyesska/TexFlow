@@ -9,6 +9,9 @@ type ShortcutMap = { readonly [name: string]: KeyCombo | ShortcutMap };
  * Pane shortcuts use Alt because browsers reserve Ctrl/Command + digit for tab switching.
  * Headings are bound in the editor keymap instead: no single combination is free on
  * every platform, so they differ between macOS and the rest.
+ *
+ * The command palette answers Ctrl/Cmd+K, as in most tools, except inside the editor,
+ * where that inserts a link as in word processors; Ctrl/Cmd+P opens it from anywhere.
  */
 export const SHORTCUTS = {
   togglePane: {
@@ -18,6 +21,8 @@ export const SHORTCUTS = {
   } satisfies Record<PaneId, KeyCombo>,
   showAllPanes: { code: "Digit0", alt: true },
   saveDocument: { code: "KeyS", mod: true },
+  commandPalette: { code: "KeyK", mod: true },
+  commandPaletteAnywhere: { code: "KeyP", mod: true },
   compile: { code: "Enter", mod: true },
   format: {
     bold: { code: "KeyB", mod: true },

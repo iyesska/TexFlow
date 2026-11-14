@@ -9,6 +9,7 @@
  * For local development and demos only: never seed a production database.
  */
 import { createDocument } from "@/server/documents/documents";
+import { keepNamedVersion } from "@/server/documents/versions";
 import { createWelcomeDocument } from "@/server/documents/welcome";
 import { createFolder } from "@/server/folders/folders";
 import { db } from "@/server/db/client";
@@ -125,15 +126,15 @@ author: Cuenta de demostración
 
 La Revolución industrial transformó la manera de producir, de trabajar y de vivir. Comenzó
 en Gran Bretaña a mediados del siglo XVIII y se extendió por Europa y Norteamérica a lo
-largo del XIX.[^1]
+largo del XIX [@hobsbawm1962].[^1]
 
 # Causas
 
-Entre sus causas suelen señalarse:
+Entre sus causas suelen señalarse [@allen2009, cap. 1]:
 
 1. El crecimiento de la población y de la demanda.
 2. La disponibilidad de carbón y de hierro.
-3. Las innovaciones técnicas, como la máquina de vapor de Watt (1769).
+3. Las innovaciones técnicas, como la máquina de vapor de Watt (1769) [@mokyr1990].
 
 > «La máquina de vapor fue al siglo XIX lo que el ordenador al XX.»
 
@@ -155,13 +156,47 @@ de progreso técnico nacen en este periodo.
 [^1]: Las fechas varían según el país y el historiador.
 `;
 
+/** The essay's sources: real books, cited in the text and listed at its end. */
+const ESSAY_SOURCES = String.raw`@book{hobsbawm1962,
+  author = {Hobsbawm, Eric J.},
+  title = {The Age of Revolution: Europe 1789--1848},
+  publisher = {Weidenfeld \& Nicolson},
+  address = {London},
+  year = {1962}
+}
+
+@book{allen2009,
+  author = {Allen, Robert C.},
+  title = {The British Industrial Revolution in Global Perspective},
+  publisher = {Cambridge University Press},
+  address = {Cambridge},
+  year = {2009}
+}
+
+@book{mokyr1990,
+  author = {Mokyr, Joel},
+  title = {The Lever of Riches: Technological Creativity and Economic Progress},
+  publisher = {Oxford University Press},
+  address = {New York},
+  year = {1990}
+}
+`;
+
 const EXAMPLES: readonly {
   readonly markdown: string;
   readonly templateId: TemplateId;
+  readonly bibliography?: string;
+  /** A version kept with a name, so the history has something to show. */
+  readonly namedVersion?: string;
 }[] = [
   { markdown: CALCULUS, templateId: "mathematical-report" },
   { markdown: MANUAL, templateId: "technical-documentation" },
-  { markdown: ESSAY, templateId: "university-assignment" },
+  {
+    markdown: ESSAY,
+    templateId: "university-assignment",
+    bibliography: ESSAY_SOURCES,
+    namedVersion: "Primer borrador",
+  },
 ];
 
 async function main() {
@@ -179,10 +214,14 @@ async function main() {
     const document = await createDocument(user.id, {
       markdown: example.markdown,
       settings: templateSettings(example.templateId),
+      bibliography: example.bibliography ?? "",
       folderId: folder.folder.id,
     });
     if (!document.ok)
       throw new Error(`No se pudo crear un documento: ${document.reason}`);
+    if (example.namedVersion) {
+      await keepNamedVersion(user.id, document.document.id, example.namedVersion);
+    }
   }
 
   say(`Cuenta de demostración creada: ${DEMO_ACCOUNT.email} / ${DEMO_ACCOUNT.password}`);

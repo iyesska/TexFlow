@@ -24,9 +24,23 @@ export function DocumentTitle() {
     [],
   );
 
-  // The browser tab follows the title as it changes, like the bar does.
+  // The browser tab follows the title as it changes, like the bar does. The page's
+  // own <title> can arrive after the page is in use, when its metadata streams in
+  // late, and React puts it first in <head>: whenever <head> changes, the current
+  // name goes back.
   useEffect(() => {
-    window.document.title = `${title} — ${site.name}`;
+    const wanted = `${title} — ${site.name}`;
+    const apply = () => {
+      if (window.document.title !== wanted) window.document.title = wanted;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(window.document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    return () => observer.disconnect();
   }, [title]);
 
   const commit = async () => {

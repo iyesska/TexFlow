@@ -16,6 +16,11 @@ const REQUIREMENTS: readonly Requirement[] = [
   { marker: "\\(", preamble: "\\usepackage{amsmath,amssymb}" },
   { marker: "\\[", preamble: "\\usepackage{amsmath,amssymb}" },
   {
+    marker: "\\begin{CSLReferences}",
+    preamble:
+      "las definiciones de CSLReferences del documento completo (lista de referencias)",
+  },
+  {
     marker: "\\tightlist",
     preamble:
       "\\providecommand{\\tightlist}{\\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}}",

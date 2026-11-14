@@ -30,10 +30,10 @@ model User {
 }
 
 model Account {
-  userId            String  @map("user_id")
+  userId            String   @map("user_id")
   type              String
   provider          String
-  providerAccountId String  @map("provider_account_id")
+  providerAccountId String   @map("provider_account_id")
   refresh_token     String?
   access_token      String?
   expires_at        Int?
@@ -90,26 +90,58 @@ enum TitleSource {
 }
 
 model Document {
-  id          String      @id @default(cuid())
-  ownerId     String      @map("owner_id")
+  id           String            @id @default(cuid())
+  ownerId      String            @map("owner_id")
   /// Deleting the folder leaves the document outside any folder.
-  folderId    String?     @map("folder_id")
-  title       String
-  titleSource TitleSource @default(CONTENT) @map("title_source")
-  markdown    String
+  folderId     String?           @map("folder_id")
+  title        String
+  titleSource  TitleSource       @default(CONTENT) @map("title_source")
+  markdown     String
   /// Design settings; validated against src/templates/settings.ts on every read.
-  settings    Json
+  settings     Json
+  /// The references the text can cite, as BibTeX.
+  bibliography String            @default("")
   /// Counts saves of the content, so a stale tab cannot overwrite newer work.
-  revision    Int         @default(0)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  folder      Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  assets      Asset[]
+  revision     Int               @default(0)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder       Folder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  assets       Asset[]
+  versions     DocumentVersion[]
 
   @@index([ownerId, updatedAt(sort: Desc)])
   @@index([folderId])
   @@map("documents")
+}
+
+/// Why a version was kept.
+enum VersionKind {
+  /// Taken while the document was edited, at most every few minutes.
+  AUTO
+  /// Kept by the writer, with a name.
+  NAMED
+  /// The state a restore replaced, so the restore can be undone.
+  BEFORE_RESTORE
+}
+
+/// A past state of a document's content, to look at or go back to.
+model DocumentVersion {
+  id           String      @id @default(cuid())
+  documentId   String      @map("document_id")
+  kind         VersionKind @default(AUTO)
+  label        String?
+  title        String
+  markdown     String
+  settings     Json
+  bibliography String      @default("")
+  /// The document's revision when this state was saved.
+  revision     Int
+  createdAt    DateTime    @default(now()) @map("created_at")
+  document     Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt(sort: Desc)])
+  @@map("document_versions")
 }
 
 /// An image that belongs to a document, stored with it.

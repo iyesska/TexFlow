@@ -36,6 +36,8 @@ export async function signIn(page: Page, account: TestAccount): Promise<void> {
 export interface OpenDocumentOptions {
   readonly markdown?: string;
   readonly settings?: DocumentSettings;
+  /** The document's references, as BibTeX. */
+  readonly bibliography?: string;
 }
 
 interface Fixtures {
@@ -60,6 +62,7 @@ export const test = base.extend<Fixtures>({
       const id = await createDocument(account.id, {
         markdown: options.markdown ?? SAMPLE_DOCUMENT,
         ...(options.settings ? { settings: options.settings } : {}),
+        ...(options.bibliography ? { bibliography: options.bibliography } : {}),
       });
       await page.goto(`/documents/${id}`);
       return id;

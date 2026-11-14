@@ -36,6 +36,7 @@ describe("pending work", () => {
     const snapshot = {
       markdown: "# Pendiente",
       settings: DEFAULT_SETTINGS,
+      bibliography: "",
       status: "saved" as const,
       manualTitle: null,
     };
@@ -44,5 +45,7 @@ describe("pending work", () => {
     expect(
       differsFrom({ ...change, settings: templateSettings("thesis") }, snapshot),
     ).toBe(true);
+    expect(differsFrom({ ...change, bibliography: "@book{a}" }, snapshot)).toBe(true);
+    expect(differsFrom({ ...change, bibliography: "" }, snapshot)).toBe(false);
   });
 });

@@ -8,6 +8,18 @@ async function documentMarkdown(page: Page, id: string): Promise<string> {
   return (await response.json()).document.markdown;
 }
 
+/** The text of the document's version with this name, or null if there is none. */
+async function versionMarkdown(page: Page, id: string, label: string) {
+  const list = await page.request.get(`/api/documents/${id}/versions`);
+  const { versions } = (await list.json()) as {
+    versions: { id: string; label: string }[];
+  };
+  const version = versions.find((each) => each.label === label);
+  if (!version) return null;
+  const one = await page.request.get(`/api/documents/${id}/versions/${version.id}`);
+  return (await one.json()).version.markdown as string;
+}
+
 test("names the document from the top bar, and the library follows", async ({
   page,
   openDocument,
@@ -72,6 +84,10 @@ test("asks which version stays when another tab saved first", async ({
   const markdown = await documentMarkdown(page, id);
   expect(markdown).toContain("Desde esta.");
   expect(markdown).not.toContain("Desde la otra pestaña.");
+  // The other tab's version is not lost: the history has it.
+  expect(
+    await versionMarkdown(page, id, "Guardada desde otra pestaña o dispositivo"),
+  ).toContain("Desde la otra pestaña.");
 });
 
 test("loads the other version when asked to", async ({ page, context, openDocument }) => {
@@ -98,4 +114,8 @@ test("loads the other version when asked to", async ({ page, context, openDocume
   await expect(editor(page)).toContainText("La buena.");
   await expect(editor(page)).not.toContainText("La que sobra.");
   await expect(saved(page)).toBeVisible();
+  // What this tab had not saved is kept in the history.
+  expect(
+    await versionMarkdown(page, id, "Cambios de esta pestaña que no se guardaron"),
+  ).toContain("La que sobra.");
 });
