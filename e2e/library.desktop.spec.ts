@@ -20,7 +20,11 @@ test("lists the account's documents, most recently changed first", async ({
   page,
   account,
 }) => {
-  await createDocument(account.id, { markdown: "# Primero" });
+  // An hour apart: two inserts in a row can share a timestamp, and then no order.
+  await createDocument(account.id, {
+    markdown: "# Primero",
+    updatedAt: new Date(Date.now() - 60 * 60 * 1000),
+  });
   await createDocument(account.id, { markdown: "# Segundo" });
   await page.goto("/documents");
 
