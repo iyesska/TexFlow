@@ -5,12 +5,12 @@ import { CredentialsSignin, type NextAuthConfig } from "next-auth";
  * session token. The proxy uses only this; ./index.ts adds the adapter and providers.
  */
 
-const PROTECTED = /^\/documents(?:\/|$)/;
-const ACCOUNT_PAGES = new Set(["/login", "/signup"]);
+const PROTECTED = /^\/(?:texflow\/)?documents(?:\/|$)/;
+const ACCOUNT_PAGES = new Set(["/login", "/signup", "/texflow/login", "/texflow/signup"]);
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
 
 export const authConfig = {
-  pages: { signIn: "/login" },
+  pages: { signIn: "/texflow/login" },
   // Sign-in with a password requires session tokens rather than database sessions.
   session: { strategy: "jwt", maxAge: THIRTY_DAYS },
   providers: [],
@@ -25,7 +25,7 @@ export const authConfig = {
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
       if (ACCOUNT_PAGES.has(pathname) && auth?.user) {
-        return Response.redirect(new URL("/documents", request.nextUrl));
+        return Response.redirect(new URL("/texflow/documents", request.nextUrl));
       }
       return PROTECTED.test(pathname) ? Boolean(auth?.user) : true;
     },

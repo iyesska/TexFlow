@@ -1,7 +1,7 @@
 /** Where a signed-in user lands when nothing else was asked for. */
-export const HOME_PATH = "/documents";
+export const HOME_PATH = "/texflow/documents";
 
-const DOCUMENT_PATH = /^\/documents(?:\/[a-z0-9]{8,40})?\/?$/;
+const DOCUMENT_PATH = /^\/(?:texflow\/)?documents(?:\/[a-z0-9]{8,40})?\/?$/;
 
 /** The path of `raw`: as it is when it is one, or taken from an absolute http(s) URL. */
 function pathOf(raw: string): string | null {

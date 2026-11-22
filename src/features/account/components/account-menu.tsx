@@ -49,7 +49,7 @@ export function AccountMenu({
       // A full load, not a client navigation: the pages kept for going back hold this
       // user's documents, and the next person at this browser must not see them.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- see above
-      window.location.href = "/login";
+      window.location.href = "/texflow/login";
     });
 
   return (

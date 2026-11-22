@@ -38,6 +38,6 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 /** For pages: the signed-in user, or a redirect to the sign-in page. */
 export async function requireSessionUser(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/texflow/login");
   return user;
 }
