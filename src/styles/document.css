@@ -1,0 +1,456 @@
+/*
+ * The typeset document, as the quick preview shows it on the paper sheet.
+ *
+ * It follows the LaTeX output so the preview reads as the same document: the same
+ * typeface, LaTeX's own type sizes and baseline, booktabs tables, numbered figures.
+ * The page, the face and the sizes come from the --page-* and --tex-* properties the
+ * document's template sets (src/features/templates/model/preview-style.ts). Sizes are
+ * in pt and em, so the whole sheet scales with the zoom.
+ */
+
+/* aislop-ignore-file ai-slop/unused-css -- the classes styled here are written into the preview's HTML by Pandoc, citeproc and KaTeX, never by this codebase */
+
+.tf-document {
+  color: var(--ink);
+  font-family: var(--page-font-family, var(--font-family-serif));
+  font-size: var(--page-font-size, 10.95pt);
+  line-height: var(--page-line-height, 1.242);
+  text-align: justify;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  counter-reset: figure table;
+}
+
+.tf-document > :first-child {
+  margin-top: 0;
+}
+
+.tf-document > :last-child {
+  margin-bottom: 0;
+}
+
+/* Title block, as \maketitle sets it above the text. */
+.tf-document .title-block {
+  margin-bottom: 2.2em;
+  line-height: 1.25;
+  text-align: center;
+  hyphens: manual;
+}
+
+.tf-document .title-block .title {
+  margin: 0 0 1.1em;
+  text-align: center;
+  font-size: var(--tex-LARGE, 17.28pt);
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+.tf-document .title-block .subtitle {
+  margin: -0.6em 0 1.1em;
+  font-size: var(--tex-large, 12pt);
+}
+
+.tf-document .title-block .author,
+.tf-document .title-block .date {
+  margin: 0.3em 0;
+  font-size: var(--tex-large, 12pt);
+}
+
+/* A cover page: the title block alone on the first sheet, as titlepage sets it. */
+.tf-cover {
+  display: flex;
+  min-height: calc(
+    var(--page-height) - var(--page-margin-top) - var(--page-margin-bottom)
+  );
+  flex-direction: column;
+}
+
+.tf-cover .title-block {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+  padding-top: calc(
+    (var(--page-height) - var(--page-margin-top) - var(--page-margin-bottom)) * 0.22
+  );
+}
+
+.tf-cover .title-block .title {
+  margin-bottom: 1.6em;
+  font-size: var(--tex-Huge, 24.88pt);
+  font-weight: 700;
+}
+
+.tf-cover .title-block .author {
+  font-size: var(--tex-Large, 14.4pt);
+}
+
+.tf-cover .title-block .date {
+  margin-top: auto;
+}
+
+/* The abstract, as the article class sets it: smaller, indented, titled. */
+.tf-document .abstract {
+  margin: 0 2.5em 2em;
+  font-size: var(--tex-small, 10pt);
+}
+
+.tf-document .abstract-title {
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Table of contents. */
+.tf-document .toc {
+  margin: 0 0 2.2em;
+}
+
+.tf-document .toc .toc-title {
+  margin-top: 0;
+}
+
+.tf-document .toc ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.tf-document .toc ul ul {
+  padding-left: 1.6em;
+}
+
+.tf-document .toc li {
+  margin: 0.25em 0;
+}
+
+.tf-document .toc > ul > li > a {
+  font-weight: 700;
+}
+
+.tf-document .toc a {
+  text-decoration: none;
+}
+
+.tf-document .toc-section-number {
+  display: inline-block;
+  min-width: 2.2em;
+}
+
+/* Sectioning: \section is \Large, \subsection \large. More space above than below. */
+.tf-document h1,
+.tf-document h2,
+.tf-document h3,
+.tf-document h4,
+.tf-document h5,
+.tf-document h6 {
+  margin: 1.6em 0 0.7em;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  hyphens: manual;
+  text-wrap: balance;
+  break-after: avoid;
+}
+
+.tf-document h1 {
+  font-size: var(--tex-Large, 14.4pt);
+}
+
+.tf-document h2 {
+  font-size: var(--tex-large, 12pt);
+}
+
+.tf-document h3,
+.tf-document h4,
+.tf-document h5,
+.tf-document h6 {
+  font-size: 1em;
+}
+
+.tf-document h5,
+.tf-document h6 {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.tf-document .header-section-number {
+  margin-right: 0.6em;
+}
+
+/* In a book, each top-level heading is a chapter: "Capítulo 1" above its title. */
+.tf-document[data-structure="book"] h1 {
+  margin: 2.6em 0 1.6em;
+  font-size: var(--tex-Huge, 24.88pt);
+}
+
+.tf-document[data-structure="book"] h1:first-child {
+  margin-top: 0;
+}
+
+.tf-document[data-structure="book"] h1 .header-section-number {
+  display: block;
+  margin: 0 0 0.8em;
+  font-size: calc(var(--tex-huge, 20.74pt) / var(--tex-Huge, 24.88pt) * 1em);
+}
+
+.tf-document[data-structure="book"] h1 .header-section-number::before {
+  content: var(--chapter-label, "Capítulo") " ";
+}
+
+/* Paragraphs: no indent, 6 pt between them, as Pandoc's LaTeX template sets. */
+.tf-document p {
+  margin: 6pt 0;
+}
+
+.tf-document a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--paper-rule);
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.18em;
+}
+
+.tf-document a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Lists */
+.tf-document ul,
+.tf-document ol {
+  margin: 6pt 0;
+  padding-left: 2em;
+}
+
+.tf-document ul {
+  list-style: disc;
+}
+
+.tf-document ul ul {
+  list-style: "– ";
+}
+
+.tf-document ol {
+  list-style: decimal;
+}
+
+.tf-document li > p {
+  margin: 0.25em 0;
+}
+
+.tf-document ul.task-list {
+  padding-left: 0.4em;
+  list-style: none;
+}
+
+.tf-document ul.task-list input {
+  margin-right: 0.5em;
+  accent-color: var(--ink);
+}
+
+.tf-document dt {
+  font-weight: 700;
+}
+
+.tf-document dd {
+  margin: 0 0 0.5em 2em;
+}
+
+.tf-document blockquote {
+  margin: 0.9em 2em;
+}
+
+/* Code is set as LaTeX's verbatim: monospaced, unshaded. */
+.tf-document code {
+  font-family: var(--font-family-mono);
+  font-size: 0.82em;
+  font-variant-ligatures: none;
+  hyphens: none;
+}
+
+.tf-document pre {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre;
+}
+
+/* Tables follow booktabs: three horizontal rules and no vertical ones. */
+.tf-document table {
+  margin: 1.1em auto;
+  border-collapse: collapse;
+  border-top: 0.08em solid var(--ink);
+  border-bottom: 0.08em solid var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document th,
+.tf-document td {
+  padding: 0.28em 0.75em;
+  vertical-align: top;
+}
+
+.tf-document th {
+  font-weight: 400;
+}
+
+.tf-document thead tr:last-child > * {
+  border-bottom: 0.05em solid var(--ink);
+}
+
+/* The caption is lifted out of the table (see lift-table-captions.ts) so that, as in
+   LaTeX, it spans the text block rather than the table. Prefixed: Tailwind has a
+   table-caption utility of its own. */
+.tf-document .tf-table-caption {
+  margin: 1.1em 0 0.5em;
+  text-align: center;
+  hyphens: manual;
+}
+
+.tf-document .tf-table-caption::before {
+  content: var(--table-label, "Tabla") " " counter(table) ": ";
+  counter-increment: table;
+}
+
+.tf-document .tf-table-caption + table {
+  margin-top: 0;
+}
+
+/* Figures are centred and numbered, as LaTeX floats are. */
+.tf-document figure {
+  margin: 1.2em 0;
+  text-align: center;
+}
+
+.tf-document img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+}
+
+.tf-document figcaption {
+  margin-top: 0.6em;
+  hyphens: manual;
+}
+
+.tf-document figcaption::before {
+  content: var(--figure-label, "Figura") " " counter(figure) ": ";
+  counter-increment: figure;
+}
+
+.tf-document .missing-image {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.9em 1.2em;
+  border: 0.06em dashed var(--ink-muted);
+  border-radius: 0.25em;
+  color: var(--ink-muted);
+  font-family: var(--font-family-sans);
+  font-size: 0.8em;
+  line-height: 1.35;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document .missing-image strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.tf-document .missing-image code {
+  overflow-wrap: anywhere;
+}
+
+.tf-document hr {
+  width: 50%;
+  margin: 1.4em auto;
+  border: 0;
+  border-top: 0.05em solid var(--ink);
+}
+
+/* Footnotes collect at the end, under LaTeX's short rule. */
+.tf-document .footnotes {
+  margin-top: 2.2em;
+  font-size: var(--tex-small, 10pt);
+}
+
+.tf-document .footnotes hr {
+  width: 28%;
+  margin: 0 0 0.7em;
+}
+
+.tf-document .footnotes ol {
+  padding-left: 1.6em;
+}
+
+.tf-document .footnote-ref,
+.tf-document .footnote-back {
+  text-decoration: none;
+}
+
+.tf-document sup {
+  line-height: 0;
+}
+
+/* References, as Pandoc's citeproc lists them: a hanging indent for author-date
+   styles, a column of labels for numbered ones (IEEE). */
+.tf-document .references {
+  margin-top: 0.6em;
+  text-align: left;
+  hyphens: manual;
+}
+
+.tf-document .csl-entry {
+  margin: 0 0 0.45em;
+}
+
+.tf-document .hanging-indent .csl-entry {
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+
+.tf-document .csl-entry:has(> .csl-left-margin) {
+  display: flex;
+  gap: 0.6em;
+}
+
+.tf-document .csl-left-margin {
+  flex: 0 0 2.4em;
+}
+
+.tf-document .csl-right-inline {
+  flex: 1;
+  min-width: 0;
+}
+
+.tf-document .citation a {
+  text-decoration: none;
+}
+
+.tf-document .citation a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--paper-rule);
+}
+
+/* Math. KaTeX's faces are Computer Modern; the scale levels them with the text face. */
+.tf-document .katex {
+  font-size: calc(var(--page-math-scale, 1.08) * 1em);
+}
+
+.tf-document .math.display {
+  display: block;
+  margin: 0.9em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.tf-document .katex-display {
+  margin: 0;
+}

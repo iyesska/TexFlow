@@ -1,0 +1,15 @@
+.next
+node_modules
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+next-env.d.ts
+AGENTS.md
+e2e/fixtures
+src/app/fonts
+# Pandoc Markdown and templates, whose syntax Prettier would rewrite
+pandoc/warmup.md
+pandoc/templates
+src/server/db/generated
+prisma/migrations

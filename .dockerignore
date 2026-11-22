@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+coverage
+playwright-report
+test-results
+e2e
+docs
+.env*
+!.env.example
+# Generated again inside the image, from the schema.
+src/server/db/generated

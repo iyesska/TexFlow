@@ -1,0 +1,33 @@
+% Loads everything the document templates can ask of LaTeX, so that
+% scripts/setup-tectonic.sh can download it while there is network. Documents are
+% compiled without network, from this cache. Keep in step with
+% src/server/templates/latex-layout.ts; the compile tests fail if something is missing.
+\newfontfamily\warmlibertinus{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\newfontfamily\warmpagella{texgyrepagella}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\newfontfamily\warmtermes{texgyretermes}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\newfontfamily\warmheros{texgyreheros}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\setmathfont{LibertinusMath-Regular.otf}[version=libertinus]
+\setmathfont{texgyrepagella-math.otf}[version=pagella]
+\setmathfont{texgyretermes-math.otf}[version=termes]
+\setmathfont{latinmodern-math.otf}[version=latinmodern]
+\makeatletter
+\@ifpackageloaded{listings}{%
+  \lstset{basicstyle=\ttfamily\small, columns=fullflexible, keepspaces=true,
+    breaklines=true, showstringspaces=false, upquote=true}%
+}{}
+\makeatother
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyfoot[C]{\thepage\ / \pageref*{LastPage}}
+\AtBeginDocument{%
+  \newcommand{\warmfaces}[1]{{#1 Texto \textbf{negrita} \textit{cursiva} \textbf{\textit{ambas}}}\par}%
+  \AtEndDocument{%
+    \warmfaces\warmlibertinus \warmfaces\warmpagella \warmfaces\warmtermes \warmfaces\warmheros
+    \warmfaces\rmfamily \warmfaces\ttfamily
+    {\ttfamily\tiny x \scriptsize x \footnotesize x \small x \normalsize x \large x
+      \textsl{x} \textbf{\textsl{x}}}\par
+    \mathversion{libertinus}$x^2$ \mathversion{pagella}$x^2$
+    \mathversion{termes}$x^2$ \mathversion{latinmodern}$x^2$\par
+  }%
+}
